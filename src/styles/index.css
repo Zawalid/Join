@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {}
+
+* {
+    @apply box-border scroll-smooth;
+}
+
+body {
+    /* font-family: 'Lexend Deca', sans-serif; */
+    /* @apply h-[100dvh] bg-background-primary !important; */
+}
+
+
+
+
+/* Scrollbar */
+::-webkit-scrollbar {}
+
+::-webkit-scrollbar-thumb {}
+
+::-webkit-scrollbar-track {}
+
+::-webkit-scrollbar-corner {}
+
+.no_scrollbar::-webkit-scrollbar {
+    display: none;
+}
