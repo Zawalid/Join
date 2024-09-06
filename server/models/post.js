@@ -14,8 +14,8 @@ const postSchema = new mongoose.Schema({
   images: {
     type: Array,
   },
-  communitie: {
-    type:Number
+  community: {
+    type: Number,
   },
   createdAt: {
     type: Date,

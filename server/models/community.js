@@ -1,15 +1,15 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 
-const communitieSchema = new mongoose.Schema({
+const communitySchema = new mongoose.Schema({
   name: {
     type: String,
-    required: [true, 'Please provide a name for the communitie'],
+    required: [true, 'Please provide a name for the community'],
     unique: true,
   },
   description: {
     type: String,
-    required: [true, 'Please provide a description for the communitie'],
+    required: [true, 'Please provide a description for the community'],
   },
   members: {
     type: Array,
@@ -41,6 +41,6 @@ const communitieSchema = new mongoose.Schema({
   },
 });
 
-const Communitie = mongoose.model('Communitie', communitieSchema);
+const Community = mongoose.model('Community', communitySchema);
 
-module.exports = Communitie;
+module.exports = Community;

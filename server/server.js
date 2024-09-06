@@ -1,43 +1,68 @@
+const Fastify = require('fastify');
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
 
-process.on('uncaughtException', (err) => {
-  console.log('UNCAUGHT EXCEPTION! 💥 Shutting down...');
-  console.log(err.name, err.message);
-  process.exit(1);
+const fastify = Fastify({
+  logger: true,
+  ignoreTrailingSlash: true,
+  caseSensitive: false,
+  ignoreDuplicateSlashes: true,
 });
+// Options for the env plugin
+const options = {
+  confKey: 'config',
+  schema: {
+    type: 'object',
+    required: ['DATABASE', 'DATABASE_PASSWORD', 'JWT_SECRET', 'PORT'],
+    properties: {
+      DATABASE: { type: 'string' },
+      DATABASE_PASSWORD: { type: 'string' },
+      JWT_SECRET: { type: 'string' },
+      PORT: { type: 'string', default: 3000 },
+    },
+  },
+  dotenv: true,
+};
 
-dotenv.config({ path: './.env' });
-const app = require('./index');
+// Register plugins
+const registerPlugins = async () => {
+  await fastify.register(require('@fastify/env'), options);
+  fastify
+    .register(require('@fastify/cors'), { origin: '*' })
+    .register(require('@fastify/helmet'))
+    .register(require('@fastify/rate-limit'), { max: 100, timeWindow: '1 minute' })
+    .register(require('@fastify/multipart'))
+    .register(require('@fastify/cookie'))
+    .register(require('@fastify/csrf-protection'))
+    .register(require('@fastify/url-data'))
+    .register(require('fastify-mongodb-sanitizer'), { params: true, query: true, body: true })
+    .register(require('@fastify/jwt'), {
+      secret: fastify.config.JWT_SECRET,
+      cookie: { cookieName: 'token' },
+    })
+    .ready((err) => {
+      if (err) throw err;
+      console.log('Everything has been loaded');
+    });
+};
 
-const DB = process.env.DATABASE.replace(
-  '<PASSWORD>',
-  process.env.DATABASE_PASSWORD
-);
+// Register routes
+fastify.register(require('./routes/userRoutes'), { prefix: '/api/v1/users' });
 
-// const DB = process.env.DATABASE_LOCAL;
+// Start the server
+const start = async () => {
+  try {
+    await registerPlugins();
 
-mongoose
-  .connect(DB)
-  .then(() => console.log('DB connection successful!'))
-  .catch((err) => console.log(err));
+    const DB = fastify.config.DATABASE.replace('<PASSWORD>', fastify.config.DATABASE_PASSWORD);
+    const port = fastify.config.PORT;
 
-const port = process.env.PORT || 3000;
-const server = app.listen(port, () => {
-  console.log(`App running on port ${port}...`);
-});
-
-process.on('unhandledRejection', (err) => {
-  console.log('UNHANDLED REJECTION! 💥 Shutting down...');
-  console.log(err.name, err.message);
-  server.close(() => {
+    const db = await mongoose.connect(DB, { dbName: 'join' });
+    fastify.log.info(`database connected ${db.connection.host} ${db.connection.name}`);
+    await fastify.listen({ port });
+  } catch (err) {
+    fastify.log.error(err);
     process.exit(1);
-  });
-});
+  }
+};
 
-process.on('SIGTERM', () => {
-  console.log('👋 SIGTERM RECEIVED. Shutting down gracefully');
-  server.close(() => {
-    console.log('💥 Process terminated!');
-  });
-});
+start();
