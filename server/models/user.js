@@ -17,6 +17,7 @@ const userSchema = new mongoose.Schema(
     username: {
       type: String,
       required: [true, 'Please provide a username'],
+      uniquer : true,
       trim: true,
       minlength: [3, 'Username must be at least 3 characters long'],
       maxlength: [20, 'Username must be less than 20 characters long'],
@@ -24,6 +25,7 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, 'Please provide your email'],
+      uniquer : true,
       lowercase: true,
       validate: [validator.isEmail, 'Please provide a valid email'],
     },
@@ -36,6 +38,7 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: [true, 'Please provide your phone number'],
+      uniquer : true,
       validate: {
         validator: function (v) {
           return /^\+?[1-9]\d{1,14}$/.test(v); // International phone number format
@@ -96,13 +99,7 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Create a text index on firstName, lastName, and username
-userSchema.index({ firstName: 'text', lastName: 'text', username: 'text' });
 
-// Ensure unique indexes on email, phone, and username
-userSchema.index({ email: 1 }, { unique: true });
-userSchema.index({ phone: 1 }, { unique: true });
-userSchema.index({ username: 1 }, { unique: true });
 
 // Hash password before saving
 // userSchema.pre('save', async function(next) {
