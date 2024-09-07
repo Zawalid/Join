@@ -54,7 +54,7 @@ const userSchema = new mongoose.Schema(
     gender: {
       type: String,
       required: [true, 'Please provide your gender'],
-      enum: ['Male', 'Female', 'Other'],
+      enum: ['Male', 'Female'],
     },
     bio: {
       type: String,
@@ -82,6 +82,12 @@ const userSchema = new mongoose.Schema(
       },
     ],
     posts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Post',
+      },
+    ],
+    savedPosts: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Post',
