@@ -1,5 +1,5 @@
 const User = require('../models/user');
-const ApiFeatures = require('../utils/ApiFeatures');
+const ApiFeatures = require('../utils/APIFeatures');
 
 const getUsers = async (req, reply) => {
   const features = new ApiFeatures(User.find(), req.query)

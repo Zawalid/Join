@@ -1,5 +1,5 @@
 const Community = require('../models/community');
-const ApiFeatures = require('../utils/ApiFeatures');
+const ApiFeatures = require('../utils/APIFeatures');
 const { select } = require('../utils/constants');
 
 const getCommunities = async (req, reply) => {
