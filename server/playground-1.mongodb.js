@@ -31,9 +31,46 @@ const generateUsers = () => ({
   createdAt: new Date(),
   updatedAt: new Date(),
 });
+const generatePost = () => ({
+  content: faker.lorem.paragraph(),
+  reacts: Array.from({ length: 5 }, () => ({
+    by: '66db9d2065461e8258cc6ecd',
+    react: 'like',
+  })),
+  comments: Array.from({ length: 5 }, () => ({
+    by: '66db9d2065461e8258cc6ecb',
+    content: faker.lorem.sentence(),
+  })),
+  images: Array.from({ length: 5 }, () => faker.image.url(800, 200, 'nature', true, true, 'Cover Image')),
+  tags: Array.from({ length: 5 }, () => faker.lorem.word()),
+  community: 1, // Replace with actual community ObjectId if needed
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  createdBy: '66db9d2065461e8258cc6ecb',
+});
+
+const generateCommunity = () => ({
+  name: faker.lorem.word(),
+  description: faker.lorem.sentence(),
+  members: ['66db9d2065461e8258cc6ecb', '66db9d2065461e8258cc6ecd', '66db9d2065461e8258cc6ecf'],
+  admins: ['66db9d2065461e8258cc6ecb', '66db9d2065461e8258cc6ecd'],
+  posts: ['66dc97c496bbb930df6ec2fc', '66dc97c496bbb930df6ec2fd'],
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
 
 
 
-db.getCollection('users').drop();
+// Generate and insert 5 posts
+const posts = Array.from({ length: 5 }, generatePost);
+const users = Array.from({ length: 10 }, generateUsers);
+const communities = Array.from({ length: 5 }, generateCommunity);
+
+
+// db.getCollection('users').drop();
 // Insert the generated users into the 'users' collection
-db.getCollection('users').insertMany(Array.from({ length: 10 }, generateUsers));
+// db.getCollection('users').insertMany(users);
+// db.getCollection('posts').drop();
+// db.getCollection('posts').insertMany(posts);
+db.getCollection('communities').drop();
+db.getCollection('communities').insertMany(communities);
