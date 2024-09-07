@@ -1,5 +1,6 @@
 const Community = require('../models/community');
 const APIFeatures = require('../utils/APIFeatures');
+const { select } = require('../utils/constants');
 
 const getCommunities = async (req, reply) => {
   const features = new APIFeatures(Community.find(), req.query)
@@ -13,7 +14,10 @@ const getCommunities = async (req, reply) => {
 };
 
 const getCommunity = async (req, reply) => {
-  const community = await Community.findById(req.params.id).populate('admins');
+  const community = await Community.findById(req.params.id).populate([
+    { path: 'admins', select: 'firstName lastName profilePicture' },
+    { path: 'members', select: 'firstName lastName profilePicture' },
+  ]);
   if (!community) {
     return reply.status(404).send({
       status: 'fail',
@@ -69,7 +73,14 @@ const deleteCommunity = async (req, reply) => {
 };
 
 const getCommunityPosts = async (req, reply) => {
-  const community = await Community.findById(req.params.id).populate('posts');
+  const community = await Community.findById(req.params.id).populate({
+    path: 'posts',
+    populate: [
+      { path: 'createdBy', select: select.user },
+      { path: 'reacts.by', select: select.user },
+      { path: 'comments.by', select: select.user },
+    ],
+  });
   if (!community) {
     return reply.status(404).send({
       status: 'fail',
