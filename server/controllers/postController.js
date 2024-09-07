@@ -105,6 +105,30 @@ const commentOnPost = async (req, reply) => {
     },
   });
 };
+const savePost = async (req, reply) => {
+  const { user } = req;
+  const post = await Post.findById(req.params.id);
+  if (!post) {
+    return reply.status(404).send({
+      status: 'fail',
+      message: 'Post not found',
+    });
+  }
+  if (user.savedPosts.includes(post._id)) {
+    return reply.status(400).send({
+      status: 'fail',
+      message: 'Post already saved',
+    });
+  }
+  user.savedPosts.push(req.body);
+  await post.save();
+  reply.status(200).send({
+    status: 'success',
+    data: {
+      savedPosts: user.savedPosts,
+    },
+  });
+};
 
 module.exports = {
   getPosts,
@@ -114,4 +138,5 @@ module.exports = {
   deletePost,
   reactToPost,
   commentOnPost,
+  savePost,
 };

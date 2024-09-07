@@ -12,7 +12,6 @@ const getCommunities = async (req, reply) => {
   const response = await features.respond();
   reply.status(200).send(response);
 };
-
 const getCommunity = async (req, reply) => {
   const community = await Community.findById(req.params.id).populate([
     { path: 'admins', select: 'firstName lastName profilePicture' },
@@ -31,7 +30,6 @@ const getCommunity = async (req, reply) => {
     },
   });
 };
-
 const createCommunity = async (req, reply) => {
   const community = await Community.create(req.body);
   reply.status(201).send({
@@ -41,7 +39,6 @@ const createCommunity = async (req, reply) => {
     },
   });
 };
-
 const updateCommunity = async (req, reply) => {
   const community = await Community.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
@@ -60,7 +57,6 @@ const updateCommunity = async (req, reply) => {
     },
   });
 };
-
 const deleteCommunity = async (req, reply) => {
   const community = await Community.findByIdAndDelete(req.params.id);
   if (!community) {
@@ -71,7 +67,6 @@ const deleteCommunity = async (req, reply) => {
   }
   reply.status(204).send();
 };
-
 const getCommunityPosts = async (req, reply) => {
   const community = await Community.findById(req.params.id).populate({
     path: 'posts',

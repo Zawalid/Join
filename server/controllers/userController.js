@@ -11,7 +11,6 @@ const getUsers = async (req, reply) => {
   const response = await features.respond();
   reply.status(200).send(response);
 };
-
 const getUser = async (req, reply) => {
   const user = await User.findById(req.params.id);
   if (!user) {
@@ -27,7 +26,6 @@ const getUser = async (req, reply) => {
     },
   });
 };
-
 const createUser = async (req, reply) => {
   const user = await User.create(req.body);
   reply.status(201).send({
@@ -37,7 +35,6 @@ const createUser = async (req, reply) => {
     },
   });
 };
-
 const updateUser = async (req, reply) => {
   const user = await User.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
@@ -56,7 +53,6 @@ const updateUser = async (req, reply) => {
     },
   });
 };
-
 const deleteUser = async (req, reply) => {
   const user = await User.findByIdAndDelete(req.params.id);
   if (!user) {

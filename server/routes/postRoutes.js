@@ -6,6 +6,7 @@ const {
   deletePost,
   reactToPost,
   commentOnPost,
+  savePost,
 } = require('../controllers/postController');
 
 module.exports = async function (fastify) {
@@ -16,4 +17,5 @@ module.exports = async function (fastify) {
   fastify.delete('/:id', deletePost);
   fastify.post('/:id/react', reactToPost);
   fastify.post('/:id/comment', commentOnPost);
+  fastify.post('/:id/save', savePost);
 };
