@@ -30,7 +30,7 @@
     "no-unused-vars": [
       "error",
       {
-        "argsIgnorePattern": "req|res|next|val"
+        "argsIgnorePattern": "req|reply|done"
       }
     ],
     "node/no-unsupported-features/es-syntax": [

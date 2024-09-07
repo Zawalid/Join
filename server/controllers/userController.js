@@ -1,106 +1,74 @@
 const User = require('../models/user');
 const APIFeatures = require('../utils/APIFeatures');
 
-const getUsers = async (request, reply) => {
-  try {
-    const features = new APIFeatures(User.find(), request.query)
-      .filter()
-      .search(['firstName', 'lastName', 'username'])
-      .sort()
-      .limitFields()
-      .paginate();
-    const response = await features.respond();
-    reply.code(200).send(response);
-  } catch (error) {
-    reply.code(500).send({ status: 'error', error: error.message });
-  }
+const getUsers = async (req, reply) => {
+  const features = new APIFeatures(User.find(), req.query)
+    .filter()
+    .search(['firstName', 'lastName', 'username'])
+    .sort()
+    .limitFields()
+    .paginate();
+  const response = await features.respond();
+  reply.status(200).send(response);
 };
 
-const getUser = async (request, reply) => {
-  try {
-    const user = await User.findById(request.params.id);
-    if (!user) {
-      return reply.code(404).send({
-        status: 'fail',
-        message: 'User not found',
-      });
-    }
-    reply.code(200).send({
-      status: 'success',
-      data: {
-        user,
-      },
-    });
-  } catch (error) {
-    reply.code(500).send({
-      status: 'error',
-      message: error.message,
+const getUser = async (req, reply) => {
+  const user = await User.findById(req.params.id);
+  if (!user) {
+    return reply.status(404).send({
+      status: 'fail',
+      message: 'User not found',
     });
   }
+  reply.status(200).send({
+    status: 'success',
+    data: {
+      user,
+    },
+  });
 };
 
-const createUser = async (request, reply) => {
-  try {
-    const user = await User.create(request.body);
-    reply.code(201).send({
-      status: 'success',
-      data: {
-        user,
-      },
-    });
-  } catch (error) {
-    reply.code(500).send({
-      status: 'error',
-      message: error.message,
-    });
-  }
+const createUser = async (req, reply) => {
+  const user = await User.create(req.body);
+  reply.status(201).send({
+    status: 'success',
+    data: {
+      user,
+    },
+  });
 };
 
-const updateUser = async (request, reply) => {
-  try {
-    const user = await User.findByIdAndUpdate(request.params.id, request.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!user) {
-      return reply.code(404).send({
-        status: 'fail',
-        message: 'User not found',
-      });
-    }
-    reply.code(200).send({
-      status: 'success',
-      data: {
-        user,
-      },
-    });
-  } catch (error) {
-    reply.code(500).send({
-      status: 'error',
-      message: error.message,
+const updateUser = async (req, reply) => {
+  const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+    new: true,
+    runValidators: true,
+  });
+  if (!user) {
+    return reply.status(404).send({
+      status: 'fail',
+      message: 'User not found',
     });
   }
+  reply.status(200).send({
+    status: 'success',
+    data: {
+      user,
+    },
+  });
 };
 
-const deleteUser = async (request, reply) => {
-  try {
-    const user = await User.findByIdAndDelete(request.params.id);
-    if (!user) {
-      return reply.code(404).send({
-        status: 'fail',
-        message: 'User not found',
-      });
-    }
-    reply.code(204).send({
-      status: 'success',
-      data: null,
-    });
-  } catch (error) {
-    reply.code(500).send({
-      status: 'error',
-      message: error.message,
+const deleteUser = async (req, reply) => {
+  const user = await User.findByIdAndDelete(req.params.id);
+  if (!user) {
+    return reply.status(404).send({
+      status: 'fail',
+      message: 'User not found',
     });
   }
+  reply.status(204).send({
+    status: 'success',
+    data: null,
+  });
 };
 
 module.exports = {

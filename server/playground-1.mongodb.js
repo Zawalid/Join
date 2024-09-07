@@ -36,4 +36,4 @@ const generateUsers = () => ({
 
 db.getCollection('users').drop();
 // Insert the generated users into the 'users' collection
-db.getCollection('users').insertMany(Array.from({ length: 20 }, generateUsers));
+db.getCollection('users').insertMany(Array.from({ length: 10 }, generateUsers));

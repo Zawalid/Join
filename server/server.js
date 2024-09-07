@@ -1,5 +1,6 @@
 const Fastify = require('fastify');
 const mongoose = require('mongoose');
+const errorHandler = require('./utils/errorHandler');
 
 const fastify = Fastify({
   logger: true,
@@ -7,6 +8,11 @@ const fastify = Fastify({
   caseSensitive: false,
   ignoreDuplicateSlashes: true,
 });
+
+// Error handler
+fastify.setErrorHandler(errorHandler);
+
+
 // Options for the env plugin
 const options = {
   confKey: 'config',
@@ -44,14 +50,18 @@ const registerPlugins = async () => {
       console.log('Everything has been loaded');
     });
 };
-
 // Register routes
-fastify.register(require('./routes/userRoutes'), { prefix: '/api/v1/users' });
+const registerRoutes = () => {
+  fastify
+    .register(require('./routes/userRoutes'), { prefix: '/api/v1/users' })
+    .register(require('./routes/authRoutes'), { prefix: '/api/v1' });
+};
 
 // Start the server
 const start = async () => {
   try {
     await registerPlugins();
+    registerRoutes();
 
     const DB = fastify.config.DATABASE.replace('<PASSWORD>', fastify.config.DATABASE_PASSWORD);
     const port = fastify.config.PORT;
@@ -66,3 +76,5 @@ const start = async () => {
 };
 
 start();
+
+module.exports = { fastify };
