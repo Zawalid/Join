@@ -1,16 +1,17 @@
 const Post = require('../models/post');
-const APIFeatures = require('../utils/APIFeatures');
+const ApiFeatures = require('../utils/ApiFeatures');
 const { select } = require('../utils/constants');
 
 const getPosts = async (req, reply) => {
-  const features = new APIFeatures(Post.find(), req.query)
-    .filter()
-    .search(['content', 'tags'])
-    .sort()
-    .limitFields()
-    .paginate();
-  const response = await features.respond();
-  reply.status(200).send(response);
+    const features = new ApiFeatures(Post.find(), req.query)
+      .filter()
+      .search(['content', 'tags'])
+      .sort()
+      .limitFields()
+      .paginate();
+    const response = await features.respond();
+    reply.status(200).send(response);
+  
 };
 const getPost = async (req, reply) => {
   const post = await Post.findById(req.params.id).populate([

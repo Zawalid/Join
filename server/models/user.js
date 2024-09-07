@@ -105,6 +105,7 @@ const userSchema = new mongoose.Schema(
         ref: 'Community',
       },
     ],
+    passwordChangedAt: Date,
   },
   {
     timestamps: true,
@@ -119,18 +120,17 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-// Todo : Remove this (im not going to need it)
-userSchema.pre('findOneAndUpdate', async function (next) {
-  const update = this.getUpdate();
-  if (update.password) {
-    update.password = await bcrypt.hash(update.password, 12);
-  }
-  next();
-});
-
-// Instance method to check password
+// Instance method for passwords
 userSchema.methods.correctPassword = async function (candidatePassword, userPassword) {
   return await bcrypt.compare(candidatePassword, userPassword);
+};
+
+userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedAt = parseInt(this.passwordChangedAt.getTime() / 1000, 10); // ms to s
+    return JWTTimestamp < changedAt;
+  }
+  return false;
 };
 
 const User = mongoose.model('User', userSchema);
