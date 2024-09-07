@@ -1,8 +1,8 @@
 const Community = require('../models/community');
-const APIFeatures = require('../utils/APIFeatures');
+const ApiFeatures = require('../utils/ApiFeatures');
 
 const getCommunities = async (req, reply) => {
-  const features = new APIFeatures(Community.find(), req.query)
+  const features = new ApiFeatures(Community.find(), req.query)
     .filter()
     .search(['name', 'description'])
     .sort()

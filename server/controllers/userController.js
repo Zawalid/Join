@@ -1,8 +1,8 @@
 const User = require('../models/user');
-const APIFeatures = require('../utils/APIFeatures');
+const ApiFeatures = require('../utils/ApiFeatures');
 
 const getUsers = async (req, reply) => {
-  const features = new APIFeatures(User.find(), req.query)
+  const features = new ApiFeatures(User.find(), req.query)
     .filter()
     .search(['firstName', 'lastName', 'username'])
     .sort()

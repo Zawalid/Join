@@ -13,9 +13,9 @@ function errorHandler(error, request, reply) {
     });
   } else {
     // Handle other types of errors
-    reply.status(500).send({
+    reply.status(error.status || 500).send({
       status: 'error',
-      message: error.message,
+      message: error.message || 'Internal Server Error',
     });
   }
 }

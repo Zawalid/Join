@@ -1,9 +1,9 @@
 const validator = require('validator');
 const User = require('../models/user');
-const { fastify } = require('../server');
+const ApiError = require('../utils/ApiError');
 
 const createSendToken = (user, statusCode, req, reply) => {
-  const token = fastify.jwt.sign({ id: user._id }, { expiresIn: fastify.config.JWT_EXPIRES_IN });
+  const token = req.jwt.sign({ id: user._id }, { expiresIn: process.env.JWT_EXPIRES_IN });
 
   reply.cookie('jwt', token, {
     expires: new Date(Date.now() + process.env.JWT_COOKIE_EXPIRES_IN * 24 * 60 * 60 * 1000),
@@ -75,6 +75,31 @@ const logout = async (req, reply) => {
   // 2. Send Response: Confirm the user has been logged out.
 };
 
+const authenticate = async (req, reply) => {
+  // 1. Extract Token: Extract the token from the request headers.
+  let token;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.replace('Bearer ', '');
+  } else if (req.cookies.jwt) {
+    token = req.cookies.jwt;
+  }
+
+  // 2. Validate Token: Check if the token is valid.
+  if (!token) throw new ApiError('Access denied. You are not logged in.', 401);
+
+  // 3. Validate User: Check if the user exists.
+  const decoded = await req.jwt.verify(token);
+  const user = await User.findById(decoded.id);
+  if (!user) throw new ApiError('Access denied. User not found.', 401);
+
+  // 4. Check if user changed password after the token was issued
+  if (user.changedPasswordAfter(decoded.iat)) {
+    throw new ApiError('Access denied. Password has been changed recently. Please log in again.', 401);
+  }
+  // 5. Attach User to Request: Attach the user information to the request object.
+  req.user = user;
+};
+
 const requestPasswordReset = async (req, reply) => {
   // 1. Receive Email: Extract the email from the request body.
   // 2. Find User: Look up the user by email.
@@ -104,13 +129,6 @@ const refreshToken = async (req, reply) => {
   // 2. Validate Refresh Token: Check if the refresh token is valid.
   // 3. Generate New Token: Create a new JWT.
   // 4. Send Response: Respond with the new token.
-};
-
-const protect = async (req, reply) => {
-  // 1. Extract Token: Extract the token from the request headers.
-  // 2. Validate Token: Check if the token is valid.
-  // 3. Attach User to Request: Attach the user information to the request object.
-  // 4. Proceed to Next Middleware: Allow the request to proceed to the next middleware or route handler.
 };
 
 const restrictTo = (...roles) => {
@@ -146,7 +164,7 @@ module.exports = {
   resetPassword,
   verifyEmail,
   refreshToken,
-  protect,
+  authenticate,
   restrictTo,
   verify2FA,
   socialLogin,

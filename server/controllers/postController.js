@@ -1,8 +1,8 @@
 const Post = require('../models/post');
-const APIFeatures = require('../utils/APIFeatures');
+const ApiFeatures = require('../utils/ApiFeatures');
 
 const getPosts = async (req, reply) => {
-    const features = new APIFeatures(Post.find(), req.query)
+    const features = new ApiFeatures(Post.find(), req.query)
       .filter()
       .search(['content', 'tags'])
       .sort()
