@@ -65,7 +65,12 @@ const deleteCommunity = async (req, reply) => {
       message: 'Community not found',
     });
   }
-  reply.status(204).send();
+  reply.status(204).send(
+    {
+      status: 'success',
+      message: 'Community deleted successfully',
+    }
+  );
 };
 const getCommunityPosts = async (req, reply) => {
   const community = await Community.findById(req.params.id).populate({
@@ -90,7 +95,10 @@ const getCommunityPosts = async (req, reply) => {
   });
 };
 const getCommunityMembers = async (req, reply) => {
-  const community = Community.findById(req.params.id).populate('members');
+  const community = await Community.findById(req.params.id).populate({
+    path: 'members',
+    select: 'firstName lastName profilePicture',
+  });
   if (!community) {
     return reply.status(404).send({
       status: 'fail',
@@ -112,7 +120,11 @@ const setCommunityAdmins = async (req, reply) => {
       message: 'Community not found',
     });
   }
-  community.admins = req.body.admins;
+  req.body.admins.forEach(element => {
+      if (!community.admins.includes(element)) {
+        community.admins.push(element);
+      }
+  }); 
   await community.save();
   reply.status(200).send({
     status: 'success',
@@ -129,13 +141,13 @@ const joinCommunity = async (req, reply) => {
       message: 'Community not found',
     });
   }
-  if (community.members.includes(req.user._id)) {
+  if (community.members.includes(req.body._id)) {
     return reply.status(400).send({
       status: 'fail',
       message: 'You are already a member of this community',
     });
   }
-  community.members.push(req.user._id);
+  community.members.push(req.body._id);
   await community.save();
   reply.status(200).send({
     status: 'success',

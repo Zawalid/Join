@@ -3,15 +3,14 @@ const ApiFeatures = require('../utils/APIFeatures');
 const { select } = require('../utils/constants');
 
 const getPosts = async (req, reply) => {
-    const features = new ApiFeatures(Post.find(), req.query)
-      .filter()
-      .search(['content', 'tags'])
-      .sort()
-      .limitFields()
-      .paginate();
-    const response = await features.respond();
-    reply.status(200).send(response);
-  
+  const features = new ApiFeatures(Post.find(), req.query)
+    .filter()
+    .search(['content', 'tags'])
+    .sort()
+    .limitFields()
+    .paginate();
+  const response = await features.respond();
+  reply.status(200).send(response);
 };
 const getPost = async (req, reply) => {
   const post = await Post.findById(req.params.id).populate([
@@ -108,6 +107,7 @@ const commentOnPost = async (req, reply) => {
 };
 const savePost = async (req, reply) => {
   const { user } = req;
+  console.log(req.user);
   const post = await Post.findById(req.params.id);
   if (!post) {
     return reply.status(404).send({
@@ -121,7 +121,7 @@ const savePost = async (req, reply) => {
       message: 'Post already saved',
     });
   }
-  user.savedPosts.push(req.body);
+  user.savedPosts.push(post._id);
   await post.save();
   reply.status(200).send({
     status: 'success',
