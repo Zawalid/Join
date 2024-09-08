@@ -1,8 +1,9 @@
 {
   "extends": [
-    "airbnb",
-    "prettier",
-    "plugin:node/recommended"
+    "eslint:recommended",
+    "plugin:node/recommended",
+    "plugin:import/recommended",
+    "prettier"
   ],
   "plugins": [
     "prettier"
@@ -20,11 +21,12 @@
     "class-methods-use-this": "off",
     "global-require": "off",
     "import/no-dynamic-require": "off",
-    "prefer-destructuring": [
+    "import/no-extraneous-dependencies": [
       "error",
       {
-        "object": true,
-        "array": false
+        "devDependencies": false,
+        "optionalDependencies": false,
+        "peerDependencies": false
       }
     ],
     "no-unused-vars": [

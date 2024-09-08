@@ -22,12 +22,12 @@
     "fastify": "^4.28.1",
     "fastify-mongodb-sanitizer": "^1.2.2",
     "mongoose": "^8.6.1",
+    "node-cron": "^3.0.3",
     "validator": "^13.12.0"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.0.0",
     "eslint": "^8.57.0",
-    "eslint-config-airbnb": "^19.0.4",
     "eslint-plugin-import": "^2.30.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-prettier": "^5.2.1",

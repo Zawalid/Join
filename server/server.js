@@ -1,9 +1,11 @@
-require('dotenv').config();
 const Fastify = require('fastify');
 const mongoose = require('mongoose');
 const errorHandler = require('./utils/errorHandler');
 const { authenticate } = require('./controllers/authController');
+require('dotenv').config();
+require('./utils/cleanup');
 
+//*--------
 const fastify = Fastify({
   logger: true,
   ignoreTrailingSlash: true,
@@ -16,8 +18,6 @@ fastify.setErrorHandler(errorHandler);
 
 // Decorate Fastify with the authenticate function
 fastify.decorate('authenticate', authenticate);
-
-// Options for the env plugin
 
 //*-------- Register plugins
 fastify
@@ -45,10 +45,10 @@ fastify
 //*-------- Register routes
 
 fastify
-.register(require('./routes/authRoutes'), { prefix: '/api/v1' })
+  .register(require('./routes/authRoutes'), { prefix: '/api/v1' })
   .register(require('./routes/userRoutes'), { prefix: '/api/v1/users' })
   .register(require('./routes/postRoutes'), { prefix: '/api/v1/posts' })
-  .register(require('./routes/communityRoutes'), { prefix: '/api/v1/communities' })
+  .register(require('./routes/communityRoutes'), { prefix: '/api/v1/communities' });
 
 //*-------- Start the server
 const DB = process.env.DATABASE.replace('<PASSWORD>', process.env.DATABASE_PASSWORD);
@@ -66,4 +66,3 @@ const start = async () => {
 };
 
 start();
-

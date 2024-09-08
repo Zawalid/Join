@@ -1,5 +1,5 @@
 const Post = require('../models/post');
-const ApiFeatures = require('../utils/APIFeatures');
+const ApiFeatures = require('../utils/ApiFeatures');
 const { select } = require('../utils/constants');
 
 const getPosts = async (req, reply) => {

@@ -1,5 +1,5 @@
 const User = require('../models/user');
-const ApiFeatures = require('../utils/APIFeatures');
+const ApiFeatures = require('../utils/ApiFeatures');
 
 const getUsers = async (req, reply) => {
   const features = new ApiFeatures(User.find(), req.query)
@@ -27,12 +27,9 @@ const getUser = async (req, reply) => {
   });
 };
 const createUser = async (req, reply) => {
-  const user = await User.create(req.body);
-  reply.status(201).send({
-    status: 'success',
-    data: {
-      user,
-    },
+  reply.status(500).json({
+    status: 'error',
+    message: 'This route is not defined! Please use /register instead',
   });
 };
 const updateUser = async (req, reply) => {
