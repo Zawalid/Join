@@ -1,4 +1,4 @@
-class ApiFeatures {
+ class ApiFeatures {
   constructor(query, queryString) {
     this.query = query;
     this.queryString = queryString;
@@ -6,7 +6,7 @@ class ApiFeatures {
 
   filter() {
     const queryObj = { ...this.queryString };
-    const excludedFields = ['page', 'sort', 'limit', 'fields','search'];
+    const excludedFields = ['page', 'sort', 'limit', 'fields', 'search'];
     excludedFields.forEach((el) => delete queryObj[el]);
 
     // 1B) Advanced filtering
@@ -22,12 +22,12 @@ class ApiFeatures {
     if (this.queryString.search) {
       const search = this.queryString.search.split(',').join('|');
       const regex = new RegExp(search, 'i'); // 'i' for case-insensitive
-  
-      const orConditions = fields.map(field => ({ [field]: regex }));
-  
+
+      const orConditions = fields.map((field) => ({ [field]: regex }));
+
       this.query = this.query.find({ $or: orConditions });
     }
-  
+
     return this;
   }
 
@@ -85,4 +85,5 @@ class ApiFeatures {
     };
   }
 }
+
 module.exports = ApiFeatures;
