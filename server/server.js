@@ -24,6 +24,7 @@ fastify
   .register(require('@fastify/jwt'), {
     secret: process.env.JWT_SECRET,
     cookie: { cookieName: 'token' },
+    decode: { complete: true },
   })
   .addHook('preHandler', (req, reply, done) => {
     req.jwt = fastify.jwt;
@@ -35,7 +36,6 @@ fastify
   .register(require('@fastify/multipart'))
   .register(require('@fastify/cookie'))
   .register(require('@fastify/csrf-protection'))
-  .register(require('@fastify/url-data'))
   .register(require('fastify-mongodb-sanitizer'), { params: true, query: true, body: true })
   .ready((err) => {
     if (err) throw err;

@@ -1,10 +1,13 @@
 const validator = require('validator');
+const crypto = require('crypto');
 const User = require('../models/user');
 const BlacklistToken = require('../models/blacklistToken');
 const RefreshToken = require('../models/refreshToken');
 const ApiError = require('../utils/ApiError');
+const sendEmail = require('../utils/email');
 const { JWT_REFRESH_EXPIRES_IN } = require('../utils/constants');
 
+//* Token handlers
 const setTokenCookie = (req, reply, token, cookieName, env) => {
   const expiresIn = process.env[env];
   const expiresInMs = expiresIn.endsWith('h')
@@ -41,14 +44,15 @@ const createSendToken = async (user, statusCode, req, reply) => {
 };
 
 const getToken = (req) => {
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    return req.headers.authorization.replace('Bearer ', '');
-  } else if (req.cookies.accessToken) {
+  if (req.cookies.accessToken) {
     return req.cookies.accessToken;
+  } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    return req.headers.authorization.replace('Bearer ', '');
   }
   return null;
 };
 
+//* Auth handlers
 const login = async (req, reply) => {
   const { email, username, password } = req.body;
 
@@ -131,40 +135,99 @@ const authenticate = async (req, reply) => {
 };
 
 const refreshToken = async (req, reply) => {
+  // 1. Extract the refresh token from cookies
   const { refreshToken } = req.cookies;
   if (!refreshToken) return reply.status(401).send({ message: 'No refresh token provided' });
 
+  // 2. Verify the refresh token
   const decoded = await req.jwt.verify(refreshToken);
+
+  // 3. Check if the refresh token exists in the database
   const existingToken = await RefreshToken.findOne({ token: refreshToken, user: decoded.id });
   if (!existingToken) return reply.status(401).send({ message: 'Invalid refresh token' });
 
-  const newAccessToken = req.jwt.sign({ id: decoded.id }, { expiresIn: '1m' }); // 1 minute for testing
-  const newRefreshToken = req.jwt.sign({ id: decoded.id }, { expiresIn: '7d' }); // 7 days
+  // 4. Generate new access and refresh tokens
+  const newAccessToken = req.jwt.sign({ id: decoded.id }, { expiresIn: process.env.JWT_EXPIRES_IN });
+  const newRefreshToken = req.jwt.sign({ id: decoded.id }, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN });
 
+  // 5. Update the existing refresh token in the database
   existingToken.token = newRefreshToken;
   existingToken.expiresAt = JWT_REFRESH_EXPIRES_IN;
   await existingToken.save();
 
+  // 6. Set the new tokens as cookies
   setTokenCookie(req, reply, newAccessToken, 'accessToken', 'JWT_EXPIRES_IN');
   setTokenCookie(req, reply, newRefreshToken, 'refreshToken', 'JWT_REFRESH_EXPIRES_IN');
 
+  // 7. Send the new tokens in the response
   return reply.send({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+};
+
+//* Password handlers
+
+const updatePassword = async (req, reply) => {
+  // 1. Get user from collection
+  const user = await User.findById(req.user.id).select('+password');
+
+  // 2. Check if POSTed current password is correct
+  if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
+    throw new ApiError('Your current password is wrong.', 401);
+  }
+
+  // 3. If so, update password
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  await user.save();
+
+  // reply.status(200).send({ status: 'success', message: 'Your password was updated successfully' });
+
+  // 4, Regenerate tokens
+  createSendToken(user, 200, req, reply);
 };
 
 const requestPasswordReset = async (req, reply) => {
   // 1. Receive Email: Extract the email from the request body.
+  const { email } = req.body;
+  if (!email || !validator.isEmail(email)) throw new ApiError('Please provide a valid email address', 400);
+
   // 2. Find User: Look up the user by email.
+  const user = await User.findOne({ email });
+  if (!user) throw new ApiError('There is no user with this email address', 404);
+
   // 3. Generate Reset Token: Create a unique token and set an expiration time.
+  const resetToken = user.createPasswordResetToken();
+  // 4. Save Token: Save the token and expiration time to the user's record.
+  await user.save({ validateBeforeSave: false });
+
   // 4. Send Email: Send an email to the user with the reset token.
-  // 5. Save Token: Save the token and expiration time to the user's record.
+  const resetUrl = `${req.protocol}://${req.hostname}/api/v1/users/reset-password/${resetToken}`;
+  const message = `Forgot your password? Submit a PATCH request with you new password and confirm password to : ${resetUrl}.\n If you didn't forget you password, please ignore this email`;
+  reply.status(200).send({ status: 'success', message: 'Email sent successfully' });
+
+  try {
+    await sendEmail({ email, subject: 'Your password reset url (valid for 10 min)', message });
+  } catch (error) {
+    user.passwordResetToken = undefined;
+    user.passwordResetExpiresAt = undefined;
+    await user.save({ validateBeforeSave: false });
+    throw new ApiError('Failed to send the email please try again later');
+  }
 };
 
 const resetPassword = async (req, reply) => {
-  // 1. Receive Token and New Password: Extract the token and new password from the request body.
-  // 2. Validate Token: Check if the token is valid and not expired.
-  // 3. Hash New Password: Use a hashing algorithm to hash the new password.
-  // 4. Update Password: Update the user's password in the database.
-  // 5. Send Response: Confirm the password has been reset.
+  // 1. Get user based on the token
+  const encryptedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+  const user = await User.findOne({ passwordResetToken: encryptedToken, passwordResetExpiresAt: { $gt: Date.now() } });
+
+  // 2. Check if the token is valid
+  if (!user) throw new ApiError('Token is invalid or expired. Please request another one.', 400);
+
+  // 3. Update the password
+  user.password = req.body.password;
+  user.passwordConfirm = req.body.passwordConfirm;
+  user.passwordResetToken = undefined;
+  user.passwordResetExpiresAt = undefined;
+  await user.save();
 };
 
 const verifyEmail = async (req, reply) => {
@@ -205,10 +268,10 @@ module.exports = {
   register,
   logout,
   refreshToken,
+  updatePassword,
   requestPasswordReset,
   resetPassword,
   verifyEmail,
-  refreshToken,
   authenticate,
   restrictTo,
   verify2FA,

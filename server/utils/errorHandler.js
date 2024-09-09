@@ -13,6 +13,7 @@ function errorHandler(error, request, reply) {
     });
   } else {
     // Handle other types of errors
+    console.error(error)
     reply.status(error.status || 500).send({
       status: 'error',
       message: error.message || 'Internal Server Error',

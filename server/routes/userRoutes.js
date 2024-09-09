@@ -1,3 +1,4 @@
+const { updatePassword, requestPasswordReset, resetPassword } = require('../controllers/authController');
 const { getUsers, getUser, createUser, updateUser, deleteUser } = require('../controllers/userController');
 
 module.exports = async function (fastify) {
@@ -13,6 +14,9 @@ module.exports = async function (fastify) {
     handler: getUser,
   });
   fastify.post('/', createUser);
-  fastify.put('/:id', updateUser);
+  fastify.patch('/:id', updateUser);
+  fastify.patch('/change-password', updatePassword);
+  fastify.post('/forgot-password', requestPasswordReset);
+  fastify.patch('/reset-password/:token', resetPassword);
   fastify.delete('/:id', deleteUser);
 };
