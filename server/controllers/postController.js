@@ -3,19 +3,19 @@ const Post = require('../models/post');
 
 const { select } = require('../utils/constants');
 
-const getPosts = getAll('posts', Post, { search: ['content'] });
-const getPost = getOne('post', Post, {
+exports.getPosts = getAll('posts', Post, { search: ['content'] });
+exports.getPost = getOne('post', Post, {
   populate: [
     { path: 'reacts.by', select: select.user },
     { path: 'comments.by', select: select.user },
     { path: 'createdBy', select: select.user },
   ],
 });
-const createPost = createOne(Post);
-const updatePost = updateOne('post', Post);
-const deletePost = deleteOne('post', Post);
+exports.createPost = createOne(Post);
+exports.updatePost = updateOne('post', Post);
+exports.deletePost = deleteOne('post', Post);
 
-const reactToPost = async (req, reply) => {
+exports.reactToPost = async (req, reply) => {
   const post = await Post.findById(req.params.id);
   if (!post) return reply.status(404).send({ message: 'post not found' });
   post.reacts.push(req.body);
@@ -27,7 +27,7 @@ const reactToPost = async (req, reply) => {
     },
   });
 };
-const commentOnPost = async (req, reply) => {
+exports.commentOnPost = async (req, reply) => {
   const post = await Post.findById(req.params.id);
   if (!post) return reply.status(404).send({ message: 'post not found' });
   post.comments.push(req.body);
@@ -39,7 +39,7 @@ const commentOnPost = async (req, reply) => {
     },
   });
 };
-const savePost = async (req, reply) => {
+exports.savePost = async (req, reply) => {
   const { user } = req;
   console.log(req.user);
   const post = await Post.findById(req.params.id);
@@ -54,15 +54,4 @@ const savePost = async (req, reply) => {
       savedPosts: user.savedPosts,
     },
   });
-};
-
-module.exports = {
-  getPosts,
-  getPost,
-  createPost,
-  updatePost,
-  deletePost,
-  reactToPost,
-  commentOnPost,
-  savePost,
 };

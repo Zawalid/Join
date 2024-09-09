@@ -21,7 +21,7 @@
   search(fields = []) {
     if (this.queryString.search) {
       const search = this.queryString.search.split(',').join('|');
-      const regex = new RegExp(search, 'i'); // 'i' for case-insensitive
+      const regex = new RegExp(search); // 'i' for case-insensitive
 
       const orConditions = fields.map((field) => ({ [field]: regex }));
 

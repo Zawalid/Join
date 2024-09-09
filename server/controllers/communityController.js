@@ -2,17 +2,17 @@ const { getOne, getAll, createOne, updateOne, deleteOne } = require('../utils/ha
 const Community = require('../models/community');
 const { select } = require('../utils/constants');
 
-const getCommunities = getAll('communities', Community, { search: ['name', 'description'] });
-const getCommunity = getOne('community', Community, {
+exports.getCommunities = getAll('communities', Community, { search: ['name', 'description'] });
+exports.getCommunity = getOne('community', Community, {
   populate: [
     { path: 'admins', select: 'firstName lastName profilePicture' },
     { path: 'members', select: 'firstName lastName profilePicture' },
   ],
 });
-const createCommunity = createOne(Community);
-const updateCommunity = updateOne('community', Community);
-const deleteCommunity = deleteOne('community', Community);
-const getCommunityPosts = getOne('community', Community, {
+exports.createCommunity = createOne(Community);
+exports.updateCommunity = updateOne('community', Community);
+exports.deleteCommunity = deleteOne('community', Community);
+exports.getCommunityPosts = getOne('community', Community, {
   populate: {
     path: 'posts',
     populate: [
@@ -22,13 +22,13 @@ const getCommunityPosts = getOne('community', Community, {
     ],
   },
 });
-const getCommunityMembers = getOne('community', Community, {
+exports.getCommunityMembers = getOne('community', Community, {
   populate: {
     path: 'members',
     select: 'firstName lastName profilePicture',
   },
 });
-const setCommunityAdmins = async (req, reply) => {
+exports.setCommunityAdmins = async (req, reply) => {
   const community = await Community.findById(req.params.id);
   if (!community) return reply.status(404).send({ message: 'Community not found' });
 
@@ -45,7 +45,7 @@ const setCommunityAdmins = async (req, reply) => {
     },
   });
 };
-const joinCommunity = async (req, reply) => {
+exports.joinCommunity = async (req, reply) => {
   const community = await Community.findById(req.params.id);
   if (!community) return reply.status(404).send({ message: 'Community not found' });
   if (community.members.includes(req.body._id))
@@ -61,14 +61,4 @@ const joinCommunity = async (req, reply) => {
   });
 };
 
-module.exports = {
-  getCommunities,
-  getCommunity,
-  createCommunity,
-  updateCommunity,
-  deleteCommunity,
-  getCommunityPosts,
-  getCommunityMembers,
-  setCommunityAdmins,
-  joinCommunity,
-};
+
