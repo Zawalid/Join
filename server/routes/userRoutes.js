@@ -1,11 +1,25 @@
-const { updatePassword, requestPasswordReset, resetPassword } = require('../controllers/authController');
-const { getUsers, getUser, createUser, updateUser, deleteUser } = require('../controllers/userController');
+const {
+  getUsers,
+  getUser,
+  createUser,
+  updateUser,
+  updateMe,
+  deleteUser,
+  deleteMe,
+} = require('../controllers/userController');
+const { updatePassword } = require('../controllers/authController');
 
 module.exports = async function (fastify) {
   fastify.addHook('preHandler', fastify.authenticate);
 
+  // User routes
   fastify.get('/', getUsers);
   fastify.get('/:id', getUser);
+  fastify.post('/', createUser);
+  fastify.patch('/:id', updateUser);
+  fastify.delete('/:id', deleteUser);
+
+  // Profile routes
   fastify.get('/me', {
     preHandler: (req, reply, done) => {
       req.params.id = req.user.id;
@@ -13,10 +27,7 @@ module.exports = async function (fastify) {
     },
     handler: getUser,
   });
-  fastify.post('/', createUser);
-  fastify.patch('/:id', updateUser);
-  fastify.patch('/change-password', updatePassword);
-  fastify.post('/forgot-password', requestPasswordReset);
-  fastify.patch('/reset-password/:token', resetPassword);
-  fastify.delete('/:id', deleteUser);
+  fastify.patch('/me/update', updateMe);
+  fastify.patch('/me/change-password', updatePassword);
+  fastify.delete('/me/delete', deleteMe);
 };
