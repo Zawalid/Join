@@ -79,6 +79,7 @@ exports.updateMe = async (req, reply) => {
 };
 
 exports.deleteUser = async (req, reply) => {
+  if (req.params.id === req.user.id) return exports.deleteMe(req, reply);
   const user = await User.findByIdAndDelete(req.params.id);
   if (!user) {
     return reply.status(404).send({
