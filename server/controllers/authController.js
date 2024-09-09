@@ -16,12 +16,13 @@ const setTokenCookie = (req, reply, token, cookieName, env) => {
 
   reply.cookie(cookieName, token, {
     expires: new Date(Date.now() + expiresInMs),
+    path: '/',
     httpOnly: true,
     secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
   });
 };
 
-const createSendToken = async (user, statusCode, req, reply) => {
+const createSendToken = async (user, statusCode, req, reply, message) => {
   const accessToken = req.jwt.sign({ id: user._id }, { expiresIn: process.env.JWT_EXPIRES_IN });
   const refreshToken = req.jwt.sign({ id: user._id }, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN });
 
@@ -35,12 +36,14 @@ const createSendToken = async (user, statusCode, req, reply) => {
   setTokenCookie(req, reply, accessToken, 'accessToken', 'JWT_EXPIRES_IN');
   setTokenCookie(req, reply, refreshToken, 'refreshToken', 'JWT_REFRESH_EXPIRES_IN');
 
-  return reply.status(statusCode).send({
-    status: 'success',
-    accessToken,
-    refreshToken,
-    data: { user },
-  });
+  return reply.status(statusCode).send(
+    message || {
+      status: 'success',
+      accessToken,
+      refreshToken,
+      data: { user },
+    }
+  );
 };
 
 const getToken = (req) => {
@@ -52,8 +55,8 @@ const getToken = (req) => {
   return null;
 };
 
-//* Auth handlers
-const login = async (req, reply) => {
+//* Authentication handlers
+exports.login = async (req, reply) => {
   const { email, username, password } = req.body;
 
   if (!email && !username) return reply.status(400).send({ message: 'Email or username is required' });
@@ -72,7 +75,7 @@ const login = async (req, reply) => {
   return createSendToken(user, 200, req, reply);
 };
 
-const register = async (req, reply) => {
+exports.register = async (req, reply) => {
   const { firstName, lastName, username, email, password, passwordConfirm, phone, birthDate, gender } = req.body;
 
   const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -95,26 +98,23 @@ const register = async (req, reply) => {
   return createSendToken(newUser, 201, req, reply);
 };
 
-const logout = async (req, reply) => {
+exports.logout = async (req, reply, message) => {
   const token = getToken(req);
-  if (token) {
-    const decoded = req.jwt.decode(token);
-    const blacklistToken = new BlacklistToken({
-      token,
-      expiresAt: new Date(decoded.exp * 1000),
-    });
-    await blacklistToken.save();
+  const decoded = req.jwt.decode(token);
+  const blacklistToken = new BlacklistToken({
+    token,
+    expiresAt: new Date(decoded.exp * 1000),
+  });
+  await blacklistToken.save();
 
-    // Clear the accessToken and refreshToken cookies
-    reply.cookie('accessToken', '', { expires: new Date(0), httpOnly: true });
-    reply.cookie('refreshToken', '', { expires: new Date(0), httpOnly: true });
+  // Clear the accessToken and refreshToken cookies
+  reply.cookie('accessToken', '', { path: '/', expires: new Date(0), httpOnly: true });
+  reply.cookie('refreshToken', '', { path: '/', expires: new Date(0), httpOnly: true });
 
-    return reply.send({ message: 'Logged out successfully' });
-  }
-  return reply.status(400).send({ message: 'No token provided' });
+  return reply.send({ status: 'success', message: message || 'Logged out successfully' });
 };
 
-const authenticate = async (req, reply) => {
+exports.authenticate = async (req, reply) => {
   const token = getToken(req);
   if (!token) throw new ApiError('Access denied. You are not logged in.', 401);
 
@@ -134,7 +134,7 @@ const authenticate = async (req, reply) => {
   req.user = user;
 };
 
-const refreshToken = async (req, reply) => {
+exports.refreshToken = async (req, reply) => {
   // 1. Extract the refresh token from cookies
   const { refreshToken } = req.cookies;
   if (!refreshToken) return reply.status(401).send({ message: 'No refresh token provided' });
@@ -164,8 +164,7 @@ const refreshToken = async (req, reply) => {
 };
 
 //* Password handlers
-
-const updatePassword = async (req, reply) => {
+exports.updatePassword = async (req, reply) => {
   // 1. Get user from collection
   const user = await User.findById(req.user.id).select('+password');
 
@@ -179,13 +178,14 @@ const updatePassword = async (req, reply) => {
   user.passwordConfirm = req.body.passwordConfirm;
   await user.save();
 
-  // reply.status(200).send({ status: 'success', message: 'Your password was updated successfully' });
-
   // 4, Regenerate tokens
-  createSendToken(user, 200, req, reply);
+  return createSendToken(user, 200, req, reply, {
+    status: 'success',
+    message: 'Your password was updated successfully',
+  });
 };
 
-const requestPasswordReset = async (req, reply) => {
+exports.requestPasswordReset = async (req, reply) => {
   // 1. Receive Email: Extract the email from the request body.
   const { email } = req.body;
   if (!email || !validator.isEmail(email)) throw new ApiError('Please provide a valid email address', 400);
@@ -214,7 +214,7 @@ const requestPasswordReset = async (req, reply) => {
   }
 };
 
-const resetPassword = async (req, reply) => {
+exports.resetPassword = async (req, reply) => {
   // 1. Get user based on the token
   const encryptedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
   const user = await User.findOne({ passwordResetToken: encryptedToken, passwordResetExpiresAt: { $gt: Date.now() } });
@@ -230,7 +230,8 @@ const resetPassword = async (req, reply) => {
   await user.save();
 };
 
-const verifyEmail = async (req, reply) => {
+//* Authorization handlers
+exports.verifyEmail = async (req, reply) => {
   // 1. Generate Verification Token: Create a unique token for email verification.
   // 2. Send Email: Send an email to the user with the verification token.
   // 3. Verify Token: When the user clicks the link, validate the token.
@@ -238,7 +239,7 @@ const verifyEmail = async (req, reply) => {
   // 5. Send Response: Confirm the email has been verified.
 };
 
-const restrictTo = (...roles) => {
+exports.restrictTo = (...roles) => {
   return (req, reply, next) => {
     // 1. Define Roles and Permissions: Define what each role can do.
     // 2. Check User Role: Check the user's role from the request object.
@@ -247,33 +248,18 @@ const restrictTo = (...roles) => {
   };
 };
 
-const verify2FA = async (req, reply) => {
+exports.verify2FA = async (req, reply) => {
   // 1. Setup 2FA: Allow users to set up 2FA (e.g., using an app like Google Authenticator).
   // 2. Generate 2FA Code: Generate a 2FA code when the user logs in.
   // 3. Verify 2FA Code: Verify the 2FA code provided by the user.
   // 4. Complete Login: Allow the user to log in if the 2FA code is correct.
 };
 
-const socialLogin = async (req, reply) => {
+exports.socialLogin = async (req, reply) => {
   // 1. Integrate with Social Provider: Use OAuth to integrate with social login providers (e.g., Google, Facebook).
   // 2. Receive Social Token: Extract the token from the social provider.
   // 3. Verify Social Token: Verify the token with the social provider.
   // 4. Find or Create User: Find the user in the database or create a new user.
   // 5. Generate Token: Create a JWT or session token for the user.
   // 6. Send Response: Respond with the user data and token.
-};
-
-module.exports = {
-  login,
-  register,
-  logout,
-  refreshToken,
-  updatePassword,
-  requestPasswordReset,
-  resetPassword,
-  verifyEmail,
-  authenticate,
-  restrictTo,
-  verify2FA,
-  socialLogin,
 };

@@ -24,7 +24,6 @@ fastify
   .register(require('@fastify/jwt'), {
     secret: process.env.JWT_SECRET,
     cookie: { cookieName: 'token' },
-    decode: { complete: true },
   })
   .addHook('preHandler', (req, reply, done) => {
     req.jwt = fastify.jwt;
