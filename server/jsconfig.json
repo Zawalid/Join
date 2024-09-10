@@ -12,5 +12,5 @@
     ],
     "include": [
         "./**/*.js"
-    ]
+, "server.js"    ]
 }

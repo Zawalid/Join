@@ -240,11 +240,13 @@ exports.verifyEmail = async (req, reply) => {
 };
 
 exports.restrictTo = (...roles) => {
-  return (req, reply, next) => {
-    // 1. Define Roles and Permissions: Define what each role can do.
-    // 2. Check User Role: Check the user's role from the request object.
-    // 3. Authorize Access: Allow or deny access based on the user's role and the required permissions for the route.
-    next();
+  return (req, reply, done) => {
+    // roles ['admin', 'user']
+    if (!roles.includes(req.user.role)) {
+      return done(new ApiError('You do not have permission to perform this action', 403));
+    }
+
+    done();
   };
 };
 

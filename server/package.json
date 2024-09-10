@@ -19,6 +19,7 @@
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.5",
     "fastify": "^4.28.1",
+    "fastify-list-routes": "^1.0.0",
     "fastify-mongodb-sanitizer": "^1.2.2",
     "mongoose": "^8.6.1",
     "node-cron": "^3.0.3",

@@ -1,11 +1,12 @@
 const Fastify = require('fastify');
 const mongoose = require('mongoose');
-const errorHandler = require('./utils/errorHandler');
+const fastifyListRoutes = require('fastify-list-routes');
+const errorHandler = require('./controllers/errorController');
 const { authenticate } = require('./controllers/authController');
 require('dotenv').config();
 require('./utils/cleanup');
 
-//*--------
+//*-------- Initiate the app
 const fastify = Fastify({
   logger: true,
   ignoreTrailingSlash: true,
@@ -21,6 +22,7 @@ fastify.decorate('authenticate', authenticate);
 
 //*-------- Register plugins
 fastify
+  .register(fastifyListRoutes, { colors: true }) // Activate to get the list of routes
   .register(require('@fastify/jwt'), {
     secret: process.env.JWT_SECRET,
     cookie: { cookieName: 'token' },
@@ -37,7 +39,7 @@ fastify
   .register(require('@fastify/csrf-protection'))
   .register(require('fastify-mongodb-sanitizer'), { params: true, query: true, body: true })
   .ready((err) => {
-    if (err) throw err;
+    if (err) return console.error('There was an error')
     console.log('Everything has been loaded');
   });
 
@@ -47,7 +49,7 @@ fastify
   .register(require('./routes/authRoutes'), { prefix: '/api/v1' })
   .register(require('./routes/userRoutes'), { prefix: '/api/v1/users' })
   .register(require('./routes/postRoutes'), { prefix: '/api/v1/posts' })
-  .register(require('./routes/communityRoutes'), { prefix: '/api/v1/communities' });
+  .register(require('./routes/communityRoutes'), { prefix: '/api/v1/communities' })
 
 //*-------- Start the server
 const DB = process.env.DATABASE.replace('<PASSWORD>', process.env.DATABASE_PASSWORD);
