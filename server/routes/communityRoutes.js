@@ -22,13 +22,13 @@ module.exports = async function (fastify, _, done) {
   fastify.delete('/:id', deleteCommunity); // Delete a specific community by ID
 
   // Community members routes
-  // fastify.get('/:id/members', getCommunityMembers); // Get members of a specific community
-  fastify.register(require('./userRoutes'), { prefix: '/:community_id/members' });
+  fastify.get('/:id/members', getCommunityMembers); // Get members of a specific community
+  // fastify.register(require('./userRoutes'), { prefix: '/:community_id/members' });
   fastify.post('/:id/join', joinCommunity); // Join a specific community
 
   // Community posts routes
-  // fastify.get('/:id/posts', getCommunityPosts); // Get posts of a specific community
-  fastify.register(require('./postRoutes'), { prefix: '/:community_id/posts' });
+  fastify.get('/:id/posts', getCommunityPosts); // Get posts of a specific community
+  // fastify.register(require('./postRoutes'), { prefix: '/:community_id/posts' });
 
   // Community admins routes
   fastify.post('/:id/admins', setCommunityAdmins); // Set admins for a specific community

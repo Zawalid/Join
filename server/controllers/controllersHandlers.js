@@ -23,7 +23,7 @@ exports.getOne = (type, model, options = {}) => {
 // Handler to get all documents with filtering, sorting, and pagination
 exports.getAll = (type, model, options = {}) => {
   return async (req, reply) => {
-    const query = options.populate ? model.find(options.filter).populate(options.populate) : model.find(options.filter);
+    const query = options.populate ? model.find().populate(options.populate) : model.find();
     const features = new ApiFeatures(query, req.query).filter().search(options.search).sort().limitFields().paginate();
 
     const response = await features.respond();

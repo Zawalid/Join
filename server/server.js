@@ -1,6 +1,6 @@
 const Fastify = require('fastify');
 const mongoose = require('mongoose');
-const fastifyListRoutes = require('fastify-list-routes');
+// const fastifyListRoutes = require('fastify-list-routes');
 const errorHandler = require('./controllers/errorController');
 const { authenticate } = require('./controllers/authController');
 require('dotenv').config();
@@ -22,7 +22,7 @@ fastify.decorate('authenticate', authenticate);
 
 //*-------- Register plugins
 fastify
-  .register(fastifyListRoutes, { colors: true }) // Activate to get the list of routes
+  //.register(fastifyListRoutes, { colors: true }) // Activate to get the list of routes
   .register(require('@fastify/jwt'), {
     secret: process.env.JWT_SECRET,
     cookie: { cookieName: 'token' },

@@ -3,11 +3,7 @@ const Post = require('../models/post');
 const { select } = require('../utils/constants');
 
 // Handler to get all posts with search options
-exports.getPosts = (req, reply) => {
-  const filter = req.params.community_id ? { community: req.params.community_id } : null;
-  console.log(filter);
-  return getAll('posts', Post, { search: ['content'], filter })(req, reply);
-};
+exports.getPosts = getAll('posts', Post, { search: ['content'] });
 
 // Handler to get a single post with population options
 exports.getPost = getOne('post', Post, {

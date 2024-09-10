@@ -3,15 +3,9 @@ const User = require('../models/user');
 const ApiError = require('../utils/ApiError');
 const { filterObject } = require('../utils/helpers');
 const { logout } = require('./authController');
-const mongoose  = require('mongoose')
 
 // Get all users with search options
-exports.getUsers =  async(req,reply) =>{
-  const filter = req.params.community_id ? { communities:  new mongoose.Types.ObjectId(req.params.community_id)} : null;
-  const members = await User.find(filter)
-  console.log(req.params.community_id,members);
-  return getAll('users', User, { search: ['firstName', 'lastName', 'email'],filter })(req,reply)
-}
+exports.getUsers = getAll('users', User, { search: ['firstName', 'lastName', 'email'] });
 
 // Get a single user by ID
 exports.getUser = getOne('user', User);
