@@ -2,10 +2,10 @@ const ApiError = require('../utils/ApiError');
 const Comment = require('../models/comment');
 const Post = require('../models/post');
 const mongoose = require('mongoose');
-const { getOne, updateOne } = require('./controllersHandlers');
+const { getOne, updateOne, reactToElement } = require('./controllersHandlers');
 
 // Handler to get all comments with search options
-exports.getPostComments = exports.getPost = getOne('post', Post, {
+exports.getPostComments = exports.getPost = getOne(Post, {
   select: 'comments',
   populate: { path: 'comments' },
 });
@@ -39,7 +39,7 @@ exports.replyToComment = async (req, reply) => {
   reply.status(200).send({ message: 'reply added' });
 };
 
-exports.getCommentReplies = getOne('comment', Comment, {
+exports.getCommentReplies = getOne(Comment, {
   select: 'replies',
   populate: { path: 'replies' },
 });
@@ -62,14 +62,6 @@ exports.deleteComment = async (req, reply) => {
   reply.status(200).send({ message: 'Comment deleted' });
 };
 
-exports.updateComment = updateOne('comment', Comment);
+exports.updateComment = updateOne(Comment);
 
-exports.reactToComment = async (req, reply) => {
-  const comment = await Comment.findById(req.params.id);
-  if (!comment) throw new ApiError('Comment not found', 404);
-
-  comment.reactions.push(req.body);
-  await comment.save();
-
-  reply.status(200).send({ message: 'reaction added' });
-};
+exports.reactToComment = reactToElement(Comment);
