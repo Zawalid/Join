@@ -8,9 +8,9 @@ exports.getPosts = getAll('posts', Post, { search: ['content'] });
 // Handler to get a single post with population options
 exports.getPost = getOne('post', Post, {
   populate: [
-    { path: 'reacts.by', select: select.user },
-    { path: 'comments.by', select: select.user },
+    { path: 'reactions.by', select: select.user },
     { path: 'createdBy', select: select.user },
+    { path: 'comments' },
   ],
 });
 
@@ -29,25 +29,7 @@ exports.reactToPost = async (req, reply) => {
 
   if (!post) return reply.status(404).send({ message: 'post not found' });
 
-  post.reacts.push(req.body);
-
-  await post.save();
-
-  reply.status(200).send({
-    status: 'success',
-    data: {
-      post,
-    },
-  });
-};
-
-// Handler to comment on a post
-exports.commentOnPost = async (req, reply) => {
-  const post = await Post.findById(req.params.id);
-
-  if (!post) return reply.status(404).send({ message: 'post not found' });
-
-  post.comments.push(req.body);
+  post.reactions.push(req.body);
 
   await post.save();
 

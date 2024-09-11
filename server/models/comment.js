@@ -1,6 +1,4 @@
 const mongoose = require('mongoose');
-// const validator = require('validator');
-
 const reactionSchema = new mongoose.Schema(
   {
     by: {
@@ -19,35 +17,29 @@ const reactionSchema = new mongoose.Schema(
     },
   }
 );
-
-const postSchema = new mongoose.Schema(
+const commentSchema = new mongoose.Schema(
   {
     content: String,
+    by: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    post: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Post',
+    },
     reactions: [reactionSchema],
-    comments: [
+    replies: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Comment',
       },
     ],
-    images: {
-      type: Array,
-    },
-    tags: {
-      type: Array,
-    },
-    community: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Community',
-    },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-const Post = mongoose.model('Post', postSchema);
-
-module.exports = Post;
+const Comment = mongoose.model('Comment', commentSchema);
+module.exports = Comment;

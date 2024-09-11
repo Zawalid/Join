@@ -1,9 +1,26 @@
 const ApiFeatures = require('../utils/ApiFeatures.js');
 
+// Handler to get all documents with filtering, sorting, and pagination
+exports.getAll = (type, model, options = {}) => {
+  return async (req, reply) => {
+    const query = options.populate
+      ? model
+          .find()
+          .select(options.select ? options.select : '-__v')
+          .populate(options.populate)
+      : model.find();
+    const features = new ApiFeatures(query, req.query).filter().search(options.search).sort().limitFields().paginate();
+
+    const response = await features.respond();
+
+    reply.status(200).send(response);
+  };
+};
+
 // Handler to get a single document by ID
 exports.getOne = (type, model, options = {}) => {
   return async (req, reply) => {
-    let element = model.findById(req.params.id);
+    let element = model.findById(req.params.id).select(options.select ? options.select : '-__v');
 
     if (!element) return reply.status(404).send({ message: `No ${type} found with that ID` });
 
@@ -17,18 +34,6 @@ exports.getOne = (type, model, options = {}) => {
         [type]: element,
       },
     });
-  };
-};
-
-// Handler to get all documents with filtering, sorting, and pagination
-exports.getAll = (type, model, options = {}) => {
-  return async (req, reply) => {
-    const query = options.populate ? model.find().populate(options.populate) : model.find();
-    const features = new ApiFeatures(query, req.query).filter().search(options.search).sort().limitFields().paginate();
-
-    const response = await features.respond();
-
-    reply.status(200).send(response);
   };
 };
 

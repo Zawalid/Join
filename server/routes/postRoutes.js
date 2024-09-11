@@ -5,9 +5,10 @@ const {
   updatePost,
   deletePost,
   reactToPost,
-  commentOnPost,
   savePost,
 } = require('../controllers/postController');
+
+const { commentOnPost, getPostComments } = require('../controllers/commentController');
 
 module.exports = function (fastify, _, done) {
   // Add authentication hook
@@ -21,8 +22,9 @@ module.exports = function (fastify, _, done) {
   fastify.delete('/:id', deletePost); // Delete a specific post by ID
 
   // Post interactions routes
-  fastify.post('/:id/react', reactToPost); // React to a specific post
-  fastify.post('/:id/comment', commentOnPost); // Comment on a specific post
+  fastify.post('/:id/reactions', reactToPost); // React to a specific post
+  fastify.post('/:id/comments', commentOnPost); // Comment on a specific post
+  fastify.get('/:id/comments', getPostComments); // get all comments on a specific post
   fastify.post('/:id/save', savePost); // Save a specific post
 
   // Call done() to signal that the route registration is complete

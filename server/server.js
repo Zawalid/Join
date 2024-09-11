@@ -39,7 +39,7 @@ fastify
   .register(require('@fastify/csrf-protection'))
   .register(require('fastify-mongodb-sanitizer'), { params: true, query: true, body: true })
   .ready((err) => {
-    if (err) return console.error('There was an error')
+    if (err) return console.error('There was an error');
     console.log('Everything has been loaded');
   });
 
@@ -50,6 +50,7 @@ fastify
   .register(require('./routes/userRoutes'), { prefix: '/api/v1/users' })
   .register(require('./routes/postRoutes'), { prefix: '/api/v1/posts' })
   .register(require('./routes/communityRoutes'), { prefix: '/api/v1/communities' })
+  .register(require('./routes/commentsRoutes'), { prefix: '/api/v1/comments' });
 
 //*-------- Start the server
 const DB = process.env.DATABASE.replace('<PASSWORD>', process.env.DATABASE_PASSWORD);

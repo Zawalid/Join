@@ -34,7 +34,7 @@ exports.getCommunityPosts = getOne('community', Community, {
     path: 'posts',
     populate: [
       { path: 'createdBy', select: select.user },
-      { path: 'reacts.by', select: select.user },
+      { path: 'reactions.by', select: select.user },
       { path: 'comments.by', select: select.user },
     ],
   },
