@@ -5,14 +5,18 @@ const {
   refreshToken,
   requestPasswordReset,
   resetPassword,
+  verifyEmail,
+  resendVerificationEmail,
 } = require('../controllers/authController');
 
-module.exports = async function (fastify, _, done) {
+module.exports = function (fastify, _, done) {
   // Authentication routes
   fastify.post('/login', login); // User login
   fastify.post('/register', register); // User registration
   fastify.post('/logout', { preHandler: [fastify.authenticate] }, logout); // User logout
   fastify.post('/refresh-token', refreshToken); // Refresh authentication token
+  fastify.get('/verify-email/:token', verifyEmail); // Verify email address
+  fastify.post('/resend-verification-email', resendVerificationEmail); // Resend email verification
 
   // Password management routes
   fastify.post('/forgot-password', requestPasswordReset); // Request password reset

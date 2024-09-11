@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const validator = require('validator');
+// const validator = require('validator');
 
 const reactSchema = new mongoose.Schema(
   {
@@ -36,29 +36,28 @@ const commentSchema = new mongoose.Schema(
   }
 );
 
-const postSchema = new mongoose.Schema({
-  content: String,
-  reacts: [reactSchema],
-  comments: [commentSchema],
-  images: {
-    type: Array,
+const postSchema = new mongoose.Schema(
+  {
+    content: String,
+    reacts: [reactSchema],
+    comments: [commentSchema],
+    images: {
+      type: Array,
+    },
+    tags: {
+      type: Array,
+    },
+    community: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Community',
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
   },
-  tags: {
-    type: Array,
-  },
-  community: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Community',
-  },
-  createdBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now(),
-  },
-});
+  { timestamps: true }
+);
 
 const Post = mongoose.model('Post', postSchema);
 

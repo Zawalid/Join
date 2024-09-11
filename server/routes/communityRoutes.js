@@ -10,9 +10,9 @@ const {
   joinCommunity,
 } = require('../controllers/communityController');
 
-module.exports = async function (fastify, _, done) {
+module.exports =  function (fastify, _, done) {
   // Add authentication hook
-  //   fastify.addHook('preHandler', fastify.authenticate);
+  fastify.addHook('preHandler', fastify.authenticate);
 
   // Community routes
   fastify.get('/', getCommunities); // Get all communities

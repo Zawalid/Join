@@ -4,10 +4,13 @@ const User = require('../models/user');
 const BlacklistToken = require('../models/blacklistToken');
 const RefreshToken = require('../models/refreshToken');
 const ApiError = require('../utils/ApiError');
-const sendEmail = require('../utils/email');
+const { sendEmail, checkRateLimit } = require('../utils/email');
 const { JWT_REFRESH_EXPIRES_IN } = require('../utils/constants');
 
+// TODO : Remove comments from the sendEmail functions (disabled to avoid exceeding the limit)
+
 //* Token handlers
+// Set token in cookies
 const setTokenCookie = (req, reply, token, cookieName, env) => {
   const expiresIn = process.env[env];
   const expiresInMs = expiresIn.endsWith('h')
@@ -21,7 +24,7 @@ const setTokenCookie = (req, reply, token, cookieName, env) => {
     secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
   });
 };
-
+// Generate access token and refresh token and send em
 const createSendToken = async (user, statusCode, req, reply, message) => {
   const accessToken = req.jwt.sign({ id: user._id }, { expiresIn: process.env.JWT_EXPIRES_IN });
   const refreshToken = req.jwt.sign({ id: user._id }, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN });
@@ -33,19 +36,17 @@ const createSendToken = async (user, statusCode, req, reply, message) => {
     expiresAt: JWT_REFRESH_EXPIRES_IN,
   });
 
+  // Hide sensitive fields
+  user.password = undefined;
+  user.emailVerification = undefined;
+  user.passwordReset = undefined;
+
   setTokenCookie(req, reply, accessToken, 'accessToken', 'JWT_EXPIRES_IN');
   setTokenCookie(req, reply, refreshToken, 'refreshToken', 'JWT_REFRESH_EXPIRES_IN');
 
-  return reply.status(statusCode).send(
-    message || {
-      status: 'success',
-      accessToken,
-      refreshToken,
-      data: { user },
-    }
-  );
+  return reply.status(statusCode).send(message || { status: 'success', accessToken, refreshToken, data: { user } });
 };
-
+// Retrieve access token
 const getToken = (req) => {
   if (req.cookies.accessToken) {
     return req.cookies.accessToken;
@@ -54,24 +55,77 @@ const getToken = (req) => {
   }
   return null;
 };
+// Generate and send the verification email
+const sendVerificationToken = async (user, req, reply) => {
+  try {
+    // Generate email verification token
+    let verificationToken;
+    if (!user.emailVerification.expiresAt || user.emailVerification.expiresAt < Date.now()) {
+      verificationToken = user.createEmailVerificationToken();
+      await user.save({ validateBeforeSave: false });
+    } else {
+      verificationToken = user.emailVerification.token;
+    }
+
+    // Create the verification URL
+    const verificationUrl = `${req.protocol}://${req.hostname}/api/v1/users/verify-email/${verificationToken}`;
+
+    // Email content
+    const message = `
+  Hi ${user.firstName} ${user.lastName},
+
+  Welcome to Join! To complete your registration, please verify your email address by clicking the link below:
+
+  ${verificationUrl}
+   
+  This link is valid for 24 hours.
+
+  If you did not create an account with Join, please ignore this email.
+
+  Thank you,
+  The Join Team
+`;
+
+    console.log({ email: user.email, subject: 'Verify Your Email Address for Join', message });
+    // await sendEmail({ email: user.email, subject: 'Verify Your Email Address for Join', message });
+
+    reply.status(200).send({
+      status: 'success',
+      message:
+        'A verification email has been sent to your email address. Please check your inbox and follow the instructions to verify your email. If you do not receive the email within a few minutes, please check your spam folder.',
+    });
+  } catch (error) {
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpiresAt = undefined;
+    await user.save({ validateBeforeSave: false });
+    throw new ApiError(
+      'Failed to send the verification email. Please try again later or contact support if the issue persists.'
+    );
+  }
+};
 
 //* Authentication handlers
 exports.login = async (req, reply) => {
   const { email, username, password } = req.body;
 
-  if (!email && !username) return reply.status(400).send({ message: 'Email or username is required' });
-  if (email && !validator.isEmail(email))
-    return reply.status(400).send({ message: 'Please provide a valid email address' });
-  if (!password) return reply.status(400).send({ message: 'Password is required' });
+  if (!email && !username) throw new ApiError('Email or username is required', 400);
+
+  if (email && !validator.isEmail(email)) throw new ApiError('Please provide a valid email address', 400);
+
+  if (!password) throw new ApiError('Password is required', 400);
 
   const user = await User.findOne({ $or: [{ email }, { username }] }).select('+password');
-  if (!user) return reply.status(404).send({ message: 'Invalid credentials. Please try again.' });
+  if (!user) throw new ApiError('Invalid credentials. Please try again.', 404);
 
   const isMatch = await user.correctPassword(password, user.password);
-  if (!isMatch) return reply.status(401).send({ message: 'Invalid credentials. Please try again.' });
+  if (!isMatch) throw new ApiError('Invalid credentials. Please try again.', 401);
 
-  user.password = undefined;
-
+  if (!user.isEmailVerified) {
+    throw new ApiError(
+      'Your email is not verified. Please check your inbox and follow the instructions to verify your email. If you did not receive the email, please check your spam folder or request a new verification email.',
+      403
+    );
+  }
   return createSendToken(user, 200, req, reply);
 };
 
@@ -95,7 +149,8 @@ exports.register = async (req, reply) => {
     gender,
   });
 
-  return createSendToken(newUser, 201, req, reply);
+  // Send the email
+  await sendVerificationToken(newUser, req, reply);
 };
 
 exports.logout = async (req, reply, message) => {
@@ -194,30 +249,54 @@ exports.requestPasswordReset = async (req, reply) => {
   const user = await User.findOne({ email });
   if (!user) throw new ApiError('There is no user with this email address', 404);
 
-  // 3. Generate Reset Token: Create a unique token and set an expiration time.
-  const resetToken = user.createPasswordResetToken();
-  // 4. Save Token: Save the token and expiration time to the user's record.
+  // 3. Generate Reset Token
+  const resetToken =
+    !user.passwordReset.expiresAt || user.passwordReset.expiresAt < Date.now()
+      ? user.createPasswordResetToken()
+      : user.passwordReset.token;
+
+  // Rate limiting: Check the last password reset email request timestamp
+  user.passwordReset.lastSentAt = checkRateLimit(user.passwordReset.lastSentAt || 0, 15 * 60 * 1000);
   await user.save({ validateBeforeSave: false });
 
   // 4. Send Email: Send an email to the user with the reset token.
   const resetUrl = `${req.protocol}://${req.hostname}/api/v1/users/reset-password/${resetToken}`;
-  const message = `Forgot your password? Submit a PATCH request with you new password and confirm password to : ${resetUrl}.\n If you didn't forget you password, please ignore this email`;
-  reply.status(200).send({ status: 'success', message: 'Email sent successfully' });
+  const message = `
+  Hi ${user.name},
+
+  We received a request to reset your password for your Join account. You can reset your password by clicking the link below:
+
+  ${resetUrl}
+
+  This link is valid for 15 minutes.
+
+  If you did not request a password reset, please ignore this email or contact our support team if you have any questions.
+
+  Thank you,
+  The Join Team
+`;
 
   try {
-    await sendEmail({ email, subject: 'Your password reset url (valid for 10 min)', message });
+    // await sendEmail({ email, subject: 'Reset Your Password for Join', message });
+    console.log({ email, subject: 'Reset Your Password for Join', message });
+    reply.status(200).send({ status: 'success', message: 'Email sent successfully' });
   } catch (error) {
-    user.passwordResetToken = undefined;
-    user.passwordResetExpiresAt = undefined;
+    user.passwordReset.token = undefined;
+    user.passwordReset.expiresAt = undefined;
     await user.save({ validateBeforeSave: false });
-    throw new ApiError('Failed to send the email please try again later');
+    throw new ApiError(
+      'Failed to send the reset email. Please try again later or contact support if the issue persists.'
+    );
   }
 };
 
 exports.resetPassword = async (req, reply) => {
   // 1. Get user based on the token
   const encryptedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
-  const user = await User.findOne({ passwordResetToken: encryptedToken, passwordResetExpiresAt: { $gt: Date.now() } });
+  const user = await User.findOne({
+    'passwordReset.token': encryptedToken,
+    'passwordReset.expiresAt': { $gt: Date.now() },
+  });
 
   // 2. Check if the token is valid
   if (!user) throw new ApiError('Token is invalid or expired. Please request another one.', 400);
@@ -225,18 +304,87 @@ exports.resetPassword = async (req, reply) => {
   // 3. Update the password
   user.password = req.body.password;
   user.passwordConfirm = req.body.passwordConfirm;
-  user.passwordResetToken = undefined;
-  user.passwordResetExpiresAt = undefined;
+  user.passwordReset.token = undefined;
+  user.passwordReset.expiresAt = undefined;
   await user.save();
+
+  reply.status(200).send({
+    status: 'success',
+    message: 'Password has been reset successfully. You can now log in with your new password.',
+  });
 };
 
 //* Authorization handlers
 exports.verifyEmail = async (req, reply) => {
-  // 1. Generate Verification Token: Create a unique token for email verification.
-  // 2. Send Email: Send an email to the user with the verification token.
-  // 3. Verify Token: When the user clicks the link, validate the token.
-  // 4. Activate Account: Mark the user's email as verified in the database.
-  // 5. Send Response: Confirm the email has been verified.
+  // 1. Get user based on the token
+  const encryptedToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+  const user = await User.findOne({
+    'emailVerification.token': encryptedToken,
+    'emailVerification.expiresAt': { $gt: Date.now() },
+  });
+
+  if (!user) throw new ApiError('Token is invalid or expired. Please request another one.', 400);
+
+  if (user.isEmailVerified) {
+    return reply.status(200).send({
+      status: 'success',
+      message: 'Your email is already verified. You can log in to your account.',
+    });
+  }
+  // 3. Activate the account
+  // user.emailVerificationToken = undefined;
+  // user.emailVerificationExpiresAt = undefined;
+  user.isEmailVerified = true;
+  user.emailVerification.verifiedAt = Date.now();
+  await user.save({ validateBeforeSave: false });
+
+  // Send a success email
+  const message = `
+  Hi ${user.firstName} ${user.lastName},
+
+  Congratulations! Your email address has been successfully verified.
+
+  You can now log in to your account and start using our services.
+
+  For added security, we recommend enabling two-factor authentication (2FA) on your account. This provides an extra layer of protection for your personal information.
+
+  If you have any questions or need assistance, please don't hesitate to contact our support team.
+
+  Thank you for joining us!
+
+  Best regards,
+  The Join Team`;
+
+  await sendEmail({
+    email: user.email,
+    subject: 'Your Email Has Been Verified',
+    message,
+  });
+
+  // Log user in
+  return createSendToken(user, 200, req, reply);
+};
+
+exports.resendVerificationEmail = async (req, reply) => {
+  const { email } = req.body;
+  if (email && !validator.isEmail(email)) throw new ApiError('Please provide a valid email address', 400);
+
+  const user = await User.findOne({ email: req.body.email });
+  if (!user) throw new ApiError('There is no user with that email address.', 404);
+
+  if (user.isEmailVerified) {
+    return reply.status(200).send({
+      status: 'success',
+      message: 'Your email is already verified. You can log in to your account.',
+    });
+  }
+
+  // Rate limiting: Check the last verification email request timestamp
+  user.lastVerificationEmailSentAt = checkRateLimit(user.lastVerificationEmailSentAt || 0, 15 * 60 * 1000);
+  await user.save({ validateBeforeSave: false });
+
+  // Send the email
+  await sendVerificationToken(user, req, reply);
 };
 
 exports.restrictTo = (...roles) => {

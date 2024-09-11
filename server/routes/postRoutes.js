@@ -9,9 +9,9 @@ const {
   savePost,
 } = require('../controllers/postController');
 
-module.exports = async function (fastify, _, done) {
+module.exports = function (fastify, _, done) {
   // Add authentication hook
-  // fastify.addHook('preHandler', fastify.authenticate);
+  fastify.addHook('preHandler', fastify.authenticate);
 
   // Post routes
   fastify.get('/', getPosts); // Get all posts

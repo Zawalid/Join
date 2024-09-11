@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
+const ApiError = require('./ApiError');
 
-const sendEmail = async ({ email, subject, message }) => {
+exports.sendEmail = async ({ email, subject, message }) => {
   const transport = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: process.env.EMAIL_PORT,
@@ -20,4 +21,11 @@ const sendEmail = async ({ email, subject, message }) => {
   await transport.sendMail(options);
 };
 
-module.exports = sendEmail;
+exports.checkRateLimit = (lastEmailSentAt, coolDownPeriod) => {
+  const now = Date.now();
+  if (now - lastEmailSentAt < coolDownPeriod) {
+    const waitTime = Math.ceil((coolDownPeriod - (now - lastEmailSentAt)) / 1000 / 60);
+    throw new ApiError(`Please wait ${waitTime} minutes before requesting another email.`, 429);
+  }
+  return now;
+};

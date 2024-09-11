@@ -112,8 +112,21 @@ const userSchema = new mongoose.Schema(
       },
     ],
     passwordChangedAt: Date,
-    passwordResetToken: String,
-    passwordResetExpiresAt: Date,
+    passwordReset: {
+      token: String,
+      expiresAt: Date,
+      lastSentAt: Date,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerification: {
+      token: String,
+      expiresAt: Date,
+      lastSentAt: Date,
+      verifiedAt: Date,
+    },
     active: {
       type: Boolean,
       default: true,
@@ -159,14 +172,17 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   return false;
 };
 
-userSchema.methods.createPasswordResetToken = function () {
-  const token = crypto.randomBytes(32).toString('hex');
-
-  this.passwordResetToken = crypto.createHash('sha256').update(token).digest('hex');
-  this.passwordResetExpiresAt = Date.now() + 10 * 60 * 1000;
-
-  return token;
+// Tokens generation
+const createToken = (field, minutes) => {
+  return function () {
+    const token = crypto.randomBytes(32).toString('hex');
+    this[field].token = crypto.createHash('sha256').update(token).digest('hex');
+    this[field].expiresAt = Date.now() + minutes * 60 * 1000;
+    return token;
+  };
 };
+userSchema.methods.createPasswordResetToken = createToken('passwordReset', 15); // 15 minutes
+userSchema.methods.createEmailVerificationToken = createToken('emailVerification', 1440); // 24 hours
 
 const User = mongoose.model('User', userSchema);
 
