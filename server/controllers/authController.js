@@ -106,8 +106,15 @@ const sendVerificationToken = async (user, req, reply) => {
 
 //* Authentication handlers
 exports.login = async (req, reply) => {
-  const { email, username, password } = req.body;
+  // Verify if the user is already logged in
+  const token = getToken(req);
+  if (token) {
+    const decoded = await req.jwt.verify(token);
+    const user = await User.findById(decoded.id);
+    if (user) return reply.status(200).send({ status: 'success', message: 'You are already logged in' });
+  }
 
+  const { email, username, password } = req.body;
   if (!email && !username) throw new ApiError('Email or username is required', 400);
 
   if (email && !validator.isEmail(email)) throw new ApiError('Please provide a valid email address', 400);
@@ -117,11 +124,8 @@ exports.login = async (req, reply) => {
   const user = await User.findOne({ $or: [{ email }, { username }] }).select('+password');
   if (!user) throw new ApiError('Invalid credentials. Please try again.', 404);
 
-  if (!user.password) {
-    return reply.status(400).send({
-      status: 'error',
-      message: 'This account does not have a password set. Please use Google login.',
-    });
+  if (!user.password && user.googleId) {
+    throw new ApiError('This account does not have a password set. Please use Google login.', 400);
   }
 
   const isMatch = await user.correctPassword(password, user.password);
@@ -133,6 +137,7 @@ exports.login = async (req, reply) => {
       403
     );
   }
+
   return createSendToken(user, 200, req, reply);
 };
 

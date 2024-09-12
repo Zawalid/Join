@@ -1,6 +1,6 @@
 const Fastify = require('fastify');
 const mongoose = require('mongoose');
-// const fastifyListRoutes = require('fastify-list-routes');
+const fastifyListRoutes = require('fastify-list-routes');
 const { OAuth2Client } = require('google-auth-library');
 const errorHandler = require('./controllers/errorController');
 const { authenticate } = require('./controllers/authController');
@@ -51,8 +51,12 @@ const client = new OAuth2Client(
 fastify.decorate('googleOAuth2Client', client);
 
 //*-------- Register plugins
+// Activate to get the list of routes if server started with --routes flag
+if (process.argv.includes('--routes')) {
+  fastify.register(fastifyListRoutes, { colors: true });
+}
+
 fastify
-  //.register(fastifyListRoutes, { colors: true }) // Activate to get the list of routes
   .register(require('@fastify/jwt'), {
     secret: process.env.JWT_SECRET,
     cookie: { cookieName: 'token' },
@@ -69,8 +73,8 @@ fastify
   .register(require('@fastify/csrf-protection'))
   .register(require('fastify-mongodb-sanitizer'), { params: true, query: true, body: true })
   .ready((err) => {
-    if (err) return console.error('There was an error');
-    fastify.log.info('Everything has been loaded');
+    if (err) return fastify.log.error('There was an error loading the plugins');
+    fastify.log.info('All plugins have been loaded');
   });
 
 //*-------- Register routes
