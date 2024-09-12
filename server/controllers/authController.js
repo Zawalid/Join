@@ -6,7 +6,6 @@ const RefreshToken = require('../models/refreshToken');
 const ApiError = require('../utils/ApiError');
 const { sendEmail, checkRateLimit } = require('../utils/email');
 const { JWT_REFRESH_EXPIRES_IN } = require('../utils/constants');
-const { default: axios } = require('axios');
 
 // TODO : Remove comments from the sendEmail functions (disabled to avoid exceeding the limit)
 
@@ -266,7 +265,10 @@ exports.requestPasswordReset = async (req, reply) => {
       : user.passwordReset.token;
 
   // Rate limiting: Check the last password reset email request timestamp
-  user.passwordReset.lastSentAt = checkRateLimit(user.passwordReset.lastSentAt || 0, 2 * 60 * 1000);
+  user.passwordReset.lastSentAt = checkRateLimit(
+    user.passwordReset.lastSentAt || 0,
+    process.env.RESET_EMAIL_COOL_DOWN_PERIOD * 60 * 1000
+  );
   await user.save({ validateBeforeSave: false });
 
   // 4. Send Email: Send an email to the user with the reset token.
@@ -385,7 +387,10 @@ exports.resendVerificationEmail = async (req, reply) => {
   }
 
   // Rate limiting: Check the last verification email request timestamp
-  user.lastVerificationEmailSentAt = checkRateLimit(user.lastVerificationEmailSentAt || 0, 2 * 60 * 1000);
+  user.lastVerificationEmailSentAt = checkRateLimit(
+    user.lastVerificationEmailSentAt || 0,
+    process.env.VERIFICATION_EMAIL_COOL_DOWN_PERIOD * 60 * 1000
+  );
   await user.save({ validateBeforeSave: false });
 
   // Send the email

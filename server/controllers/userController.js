@@ -5,10 +5,13 @@ const { filterObject } = require('../utils/helpers');
 const { logout } = require('./authController');
 
 // Get all users with search options
-exports.getUsers = getAll('users', User, { search: ['firstName', 'lastName', 'email'] });
+exports.getUsers = getAll(User, {
+  search: ['firstName', 'lastName', 'email'],
+  select: '-passwordReset -emailVerification',
+});
 
 // Get a single user by ID
-exports.getUser = getOne('user', User);
+exports.getUser = getOne(User, { select: '-passwordReset -emailVerification' });
 
 // Create a new user (not defined, use /register instead)
 exports.createUser = async (req, reply) => {
@@ -19,7 +22,7 @@ exports.createUser = async (req, reply) => {
 };
 
 // Update an existing user by ID
-exports.updateUser = updateOne('user', User);
+exports.updateUser = updateOne(User);
 
 // Update the authenticated user's own profile
 exports.updateMe = async (req, reply) => {
@@ -36,7 +39,7 @@ exports.updateMe = async (req, reply) => {
   const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
     new: true,
     runValidators: true,
-  });
+  }).select('-passwordReset -emailVerification');
 
   reply.status(200).send({
     status: 'success',
