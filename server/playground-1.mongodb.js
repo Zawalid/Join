@@ -33,20 +33,17 @@ const generateUsers = () => ({
 });
 const generatePost = () => ({
   content: faker.lorem.paragraph(),
-  reacts: Array.from({ length: 5 }, () => ({
+  reactions: Array.from({ length: 5 }, () => ({
     by: '66db9d2065461e8258cc6ecd',
     react: 'like',
   })),
-  comments: Array.from({ length: 5 }, () => ({
-    by: '66db9d2065461e8258cc6ecb',
-    content: faker.lorem.sentence(),
-  })),
+  comments: [],
   images: Array.from({ length: 5 }, () => faker.image.url(800, 200, 'nature', true, true, 'Cover Image')),
   tags: Array.from({ length: 5 }, () => faker.lorem.word()),
-  community: 1, // Replace with actual community ObjectId if needed
+  community: '66df0e739970a53c83da5b95', // Replace with actual community ObjectId if needed
   createdAt: new Date(),
   updatedAt: new Date(),
-  createdBy: '66db9d2065461e8258cc6ecb',
+  createdBy: '66e0fafa7e69a87ea9f5a0a0',
 });
 
 const generateCommunity = () => ({
@@ -59,18 +56,32 @@ const generateCommunity = () => ({
   updatedAt: new Date(),
 });
 
-
+const generateComment = () => ({
+  content: faker.lorem.sentence(),
+  by: '66e0fafa7e69a87ea9f5a0a0',
+  post: '66e1d3449c7b8e9b610bbe1e',
+  reactions: [
+    {
+      by: '66e0fafa7e69a87ea9f5a0a0',
+      reaction: 'like',
+    },
+  ],
+});
 
 // Generate and insert 5 posts
-const posts = Array.from({ length: 5 }, generatePost);
+const posts = Array.from({ length: 2 }, generatePost);
 const users = Array.from({ length: 10 }, generateUsers);
 const communities = Array.from({ length: 5 }, generateCommunity);
-
+const comments = Array.from({ length: 2 }, generateComment);
 
 // db.getCollection('users').drop();
-// Insert the generated users into the 'users' collection
 // db.getCollection('users').insertMany(users);
+
 // db.getCollection('posts').drop();
 // db.getCollection('posts').insertMany(posts);
-db.getCollection('communities').drop();
-db.getCollection('communities').insertMany(communities);
+
+// db.getCollection('communities').drop();
+// db.getCollection('communities').insertMany(communities);
+
+// db.getCollection('comments').drop();
+// db.getCollection('comments').insertMany(comments);

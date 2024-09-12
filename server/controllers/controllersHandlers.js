@@ -1,11 +1,28 @@
 const ApiFeatures = require('../utils/ApiFeatures.js');
 
-// Handler to get a single document by ID
-exports.getOne = (type, model, options = {}) => {
+// Handler to get all documents with filtering, sorting, and pagination
+exports.getAll = (model, options = {}) => {
   return async (req, reply) => {
-    let element = model.findById(req.params.id);
+    const query = options.populate
+      ? model
+          .find()
+          .select(options.select ? options.select : '-__v')
+          .populate(options.populate)
+      : model.find();
+    const features = new ApiFeatures(query, req.query).filter().search(options.search).sort().limitFields().paginate();
 
-    if (!element) return reply.status(404).send({ message: `No ${type} found with that ID` });
+    const response = await features.respond();
+
+    reply.status(200).send(response);
+  };
+};
+
+// Handler to get a single document by ID
+exports.getOne = (model, options = {}) => {
+  return async (req, reply) => {
+    let element = model.findById(req.params.id).select(options.select ? options.select : '-__v');
+
+    if (!element) return reply.status(404).send({ message: `No ${model.modelName} found with that ID` });
 
     if (options.populate) element = element.populate(options.populate);
 
@@ -14,21 +31,9 @@ exports.getOne = (type, model, options = {}) => {
     reply.status(200).send({
       status: 'success',
       data: {
-        [type]: element,
+        [model.modelName]: element,
       },
     });
-  };
-};
-
-// Handler to get all documents with filtering, sorting, and pagination
-exports.getAll = (type, model, options = {}) => {
-  return async (req, reply) => {
-    const query = options.populate ? model.find().populate(options.populate) : model.find();
-    const features = new ApiFeatures(query, req.query).filter().search(options.search).sort().limitFields().paginate();
-
-    const response = await features.respond();
-
-    reply.status(200).send(response);
   };
 };
 
@@ -47,30 +52,30 @@ exports.createOne = (model) => {
 };
 
 // Handler to update a document by ID
-exports.updateOne = (type, model) => {
+exports.updateOne = (model) => {
   return async (req, reply) => {
     const doc = await model.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
 
-    if (!doc) return reply.status(404).send({ message: `No ${type} found with that ID` });
+    if (!doc) return reply.status(404).send({ message: `No ${model.modelName} found with that ID` });
 
     reply.status(200).send({
       status: 'success',
       data: {
-        [type]: doc,
+        [model.modelName]: doc,
       },
     });
   };
 };
 
 // Handler to delete a document by ID
-exports.deleteOne = (type, model) => {
+exports.deleteOne = (model) => {
   return async (req, reply) => {
     const doc = await model.findByIdAndDelete(req.params.id);
 
-    if (!doc) return reply.status(404).send({ message: `No ${type} found with that ID` });
+    if (!doc) return reply.status(404).send({ message: `No ${model.modelName} found with that ID` });
 
     reply.status(204).send({
       status: 'success',
@@ -78,3 +83,22 @@ exports.deleteOne = (type, model) => {
     });
   };
 };
+
+exports.reactToElement = (model) => {
+  return async (req, reply) => {
+    const element = await model.findById(req.params.id);
+
+    if (!element) return reply.status(404).send({ message: `No ${model.modelName} found with that ID` });
+
+    element.reactions.push(req.body);
+
+    await element.save();
+
+    reply.status(200).send({
+      status: 'success',
+      data: {
+        [model.modelName]: element,
+      },
+    });
+  };
+}

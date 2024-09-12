@@ -1,16 +1,16 @@
-const { getOne, getAll, createOne, updateOne, deleteOne } = require('./controllersHandlers');
+const { getOne, getAll, createOne, updateOne, deleteOne, reactToElement } = require('./controllersHandlers');
 const Post = require('../models/post');
 const { select } = require('../utils/constants');
 
 // Handler to get all posts with search options
-exports.getPosts = getAll('posts', Post, { search: ['content'] });
+exports.getPosts = getAll( Post, { search: ['content'] });
 
 // Handler to get a single post with population options
-exports.getPost = getOne('post', Post, {
+exports.getPost = getOne( Post, {
   populate: [
-    { path: 'reacts.by', select: select.user },
-    { path: 'comments.by', select: select.user },
+    { path: 'reactions.by', select: select.user },
     { path: 'createdBy', select: select.user },
+    { path: 'comments' },
   ],
 });
 
@@ -18,46 +18,13 @@ exports.getPost = getOne('post', Post, {
 exports.createPost = createOne(Post);
 
 // Handler to update an existing post
-exports.updatePost = updateOne('post', Post);
+exports.updatePost = updateOne( Post);
 
 // Handler to delete a post
-exports.deletePost = deleteOne('post', Post);
+exports.deletePost = deleteOne( Post);
 
 // Handler to react to a post
-exports.reactToPost = async (req, reply) => {
-  const post = await Post.findById(req.params.id);
-
-  if (!post) return reply.status(404).send({ message: 'post not found' });
-
-  post.reacts.push(req.body);
-
-  await post.save();
-
-  reply.status(200).send({
-    status: 'success',
-    data: {
-      post,
-    },
-  });
-};
-
-// Handler to comment on a post
-exports.commentOnPost = async (req, reply) => {
-  const post = await Post.findById(req.params.id);
-
-  if (!post) return reply.status(404).send({ message: 'post not found' });
-
-  post.comments.push(req.body);
-
-  await post.save();
-
-  reply.status(200).send({
-    status: 'success',
-    data: {
-      post,
-    },
-  });
-};
+exports.reactToPost = reactToElement( Post); 
 
 // Handler to save a post to the user's saved posts
 exports.savePost = async (req, reply) => {
