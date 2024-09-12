@@ -6,6 +6,7 @@ const RefreshToken = require('../models/refreshToken');
 const ApiError = require('../utils/ApiError');
 const { sendEmail, checkRateLimit } = require('../utils/email');
 const { JWT_REFRESH_EXPIRES_IN } = require('../utils/constants');
+const { default: axios } = require('axios');
 
 // TODO : Remove comments from the sendEmail functions (disabled to avoid exceeding the limit)
 
@@ -117,6 +118,13 @@ exports.login = async (req, reply) => {
   const user = await User.findOne({ $or: [{ email }, { username }] }).select('+password');
   if (!user) throw new ApiError('Invalid credentials. Please try again.', 404);
 
+  if (!user.password) {
+    return reply.status(400).send({
+      status: 'error',
+      message: 'This account does not have a password set. Please use Google login.',
+    });
+  }
+
   const isMatch = await user.correctPassword(password, user.password);
   if (!isMatch) throw new ApiError('Invalid credentials. Please try again.', 401);
 
@@ -224,14 +232,16 @@ exports.updatePassword = async (req, reply) => {
   const user = await User.findById(req.user.id).select('+password');
 
   // 2. Check if POSTed current password is correct
-  if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
-    throw new ApiError('Your current password is wrong.', 401);
+  if (user.password && !user.googleId) {
+    if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
+      throw new ApiError('Your current password is wrong.', 401);
+    }
   }
 
   // 3. If so, update password
   user.password = req.body.password;
   user.passwordConfirm = req.body.passwordConfirm;
-  await user.save();
+  await user.save({ validateModifiedOnly: true });
 
   // 4, Regenerate tokens
   return createSendToken(user, 200, req, reply, {
@@ -256,7 +266,7 @@ exports.requestPasswordReset = async (req, reply) => {
       : user.passwordReset.token;
 
   // Rate limiting: Check the last password reset email request timestamp
-  user.passwordReset.lastSentAt = checkRateLimit(user.passwordReset.lastSentAt || 0, 15 * 60 * 1000);
+  user.passwordReset.lastSentAt = checkRateLimit(user.passwordReset.lastSentAt || 0, 2 * 60 * 1000);
   await user.save({ validateBeforeSave: false });
 
   // 4. Send Email: Send an email to the user with the reset token.
@@ -306,7 +316,7 @@ exports.resetPassword = async (req, reply) => {
   user.passwordConfirm = req.body.passwordConfirm;
   user.passwordReset.token = undefined;
   user.passwordReset.expiresAt = undefined;
-  await user.save();
+  await user.save({ validateModifiedOnly: true });
 
   reply.status(200).send({
     status: 'success',
@@ -332,8 +342,6 @@ exports.verifyEmail = async (req, reply) => {
     });
   }
   // 3. Activate the account
-  // user.emailVerificationToken = undefined;
-  // user.emailVerificationExpiresAt = undefined;
   user.isEmailVerified = true;
   user.emailVerification.verifiedAt = Date.now();
   await user.save({ validateBeforeSave: false });
@@ -355,11 +363,8 @@ exports.verifyEmail = async (req, reply) => {
   Best regards,
   The Join Team`;
 
-  await sendEmail({
-    email: user.email,
-    subject: 'Your Email Has Been Verified',
-    message,
-  });
+  console.log({ email: user.email, subject: 'Your Email Has Been Verified', message });
+  // await sendEmail({ email: user.email, subject: 'Your Email Has Been Verified', message });
 
   // Log user in
   return createSendToken(user, 200, req, reply);
@@ -380,7 +385,7 @@ exports.resendVerificationEmail = async (req, reply) => {
   }
 
   // Rate limiting: Check the last verification email request timestamp
-  user.lastVerificationEmailSentAt = checkRateLimit(user.lastVerificationEmailSentAt || 0, 15 * 60 * 1000);
+  user.lastVerificationEmailSentAt = checkRateLimit(user.lastVerificationEmailSentAt || 0, 2 * 60 * 1000);
   await user.save({ validateBeforeSave: false });
 
   // Send the email
@@ -405,11 +410,62 @@ exports.verify2FA = async (req, reply) => {
   // 4. Complete Login: Allow the user to log in if the 2FA code is correct.
 };
 
-exports.socialLogin = async (req, reply) => {
-  // 1. Integrate with Social Provider: Use OAuth to integrate with social login providers (e.g., Google, Facebook).
-  // 2. Receive Social Token: Extract the token from the social provider.
-  // 3. Verify Social Token: Verify the token with the social provider.
-  // 4. Find or Create User: Find the user in the database or create a new user.
-  // 5. Generate Token: Create a JWT or session token for the user.
-  // 6. Send Response: Respond with the user data and token.
+//* Google Authentication
+exports.initiateGoogleAuth = (req, reply) => {
+  const url = req.server.googleOAuth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: [
+      'profile',
+      'email',
+      'https://www.googleapis.com/auth/user.birthday.read',
+      'https://www.googleapis.com/auth/user.phonenumbers.read',
+      'https://www.googleapis.com/auth/user.gender.read',
+    ],
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+  });
+  reply.redirect(url);
+};
+
+exports.googleAuth = async (req, reply) => {
+  const { code } = req.query;
+
+  // Retrieve tokens
+  const { tokens } = await req.server.googleOAuth2Client.getToken({
+    code,
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI,
+  });
+
+  // Verify ID token
+  const ticket = await req.server.googleOAuth2Client.verifyIdToken({
+    idToken: tokens.id_token,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  });
+  const payload = ticket.getPayload();
+
+  const { sub, at_hash, email, given_name, family_name, picture, email_verified } = payload;
+  const username = `${given_name.replace(/[^a-zA-Z0-9]/g, '')}_${at_hash.slice(0, 6)}`;
+
+  // Check if the email is already used and if so link the account to Google
+  let user = await User.findOne({ email });
+  if (user && !user.googleId) {
+    user.googleId = sub;
+    await user.save({ validateBeforeSave: false });
+  } else {
+    // Find or create user in your database
+    user = await User.findOne({ googleId: sub });
+    if (!user) {
+      user = new User({
+        googleId: sub,
+        email,
+        username,
+        firstName: given_name,
+        lastName: family_name,
+        profilePicture: picture,
+        isEmailVerified: email_verified,
+      });
+      await user.save({ validateBeforeSave: false });
+    }
+  }
+
+  return createSendToken(user, 200, req, reply);
 };

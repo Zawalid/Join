@@ -7,6 +7,8 @@ const {
   resetPassword,
   verifyEmail,
   resendVerificationEmail,
+  initiateGoogleAuth,
+  googleAuth,
 } = require('../controllers/authController');
 
 module.exports = function (fastify, _, done) {
@@ -17,6 +19,10 @@ module.exports = function (fastify, _, done) {
   fastify.post('/refresh-token', refreshToken); // Refresh authentication token
   fastify.get('/verify-email/:token', verifyEmail); // Verify email address
   fastify.post('/resend-verification-email', resendVerificationEmail); // Resend email verification
+
+  // Google auth
+  fastify.get('/auth/google', initiateGoogleAuth);
+  fastify.get('/auth/google/callback', googleAuth);
 
   // Password management routes
   fastify.post('/forgot-password', requestPasswordReset); // Request password reset

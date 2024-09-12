@@ -1,14 +1,34 @@
 const Fastify = require('fastify');
 const mongoose = require('mongoose');
 // const fastifyListRoutes = require('fastify-list-routes');
+const { OAuth2Client } = require('google-auth-library');
 const errorHandler = require('./controllers/errorController');
 const { authenticate } = require('./controllers/authController');
 require('dotenv').config();
 require('./utils/cleanup');
 
 //*-------- Initiate the app
+
 const fastify = Fastify({
-  logger: true,
+  logger: {
+    transport: { target: require.resolve('./pino-pretty-transport') },
+    serializers: {
+      req(request) {
+        return {
+          method: request.method,
+          url: `${request.protocol}://${request.hostname}${request.url}`,
+          headers: request.headers,
+        };
+      },
+      res(response) {
+        return {
+          statusCode: response.statusCode,
+          method: response.request.method,
+          url: `${response.request.protocol}://${response.request.hostname}${response.request.url}`,
+        };
+      },
+    },
+  },
   ignoreTrailingSlash: true,
   caseSensitive: false,
   ignoreDuplicateSlashes: true,
@@ -19,6 +39,16 @@ fastify.setErrorHandler(errorHandler);
 
 // Decorate Fastify with the authenticate function
 fastify.decorate('authenticate', authenticate);
+
+// Initialize OAuth2Client
+const client = new OAuth2Client(
+  process.env.GOOGLE_CLIENT_ID,
+  process.env.GOOGLE_CLIENT_SECRET,
+  process.env.GOOGLE_REDIRECT_URI
+);
+
+// Decorate Fastify with the OAuth2Client
+fastify.decorate('googleOAuth2Client', client);
 
 //*-------- Register plugins
 fastify
@@ -39,8 +69,8 @@ fastify
   .register(require('@fastify/csrf-protection'))
   .register(require('fastify-mongodb-sanitizer'), { params: true, query: true, body: true })
   .ready((err) => {
-    if (err) return console.error('There was an error')
-    console.log('Everything has been loaded');
+    if (err) return console.error('There was an error');
+    fastify.log.info('Everything has been loaded');
   });
 
 //*-------- Register routes
@@ -49,7 +79,7 @@ fastify
   .register(require('./routes/authRoutes'), { prefix: '/api/v1' })
   .register(require('./routes/userRoutes'), { prefix: '/api/v1/users' })
   .register(require('./routes/postRoutes'), { prefix: '/api/v1/posts' })
-  .register(require('./routes/communityRoutes'), { prefix: '/api/v1/communities' })
+  .register(require('./routes/communityRoutes'), { prefix: '/api/v1/communities' });
 
 //*-------- Start the server
 const DB = process.env.DATABASE.replace('<PASSWORD>', process.env.DATABASE_PASSWORD);
