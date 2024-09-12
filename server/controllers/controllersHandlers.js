@@ -3,12 +3,11 @@ const ApiFeatures = require('../utils/ApiFeatures.js');
 // Handler to get all documents with filtering, sorting, and pagination
 exports.getAll = (model, options = {}) => {
   return async (req, reply) => {
-    const query = options.populate
-      ? model
-          .find()
-          .select(options.select ? options.select : '-__v')
-          .populate(options.populate)
-      : model.find();
+    console.log(options);
+    const query = model.find();
+    if (options.select) query.select(options.select);
+    if (options.populate) query.populate(options.populate);
+    
     const features = new ApiFeatures(query, req.query).filter().search(options.search).sort().limitFields().paginate();
 
     const response = await features.respond();
@@ -101,4 +100,4 @@ exports.reactToElement = (model) => {
       },
     });
   };
-}
+};

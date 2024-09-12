@@ -11,7 +11,10 @@ const fastify = Fastify({
 });
 
 //register routes
-fastify.register(require('./routes/user'));
+fastify
+  .register(require('./routes/user'), { prefix: '/api/v1/users' })
+  .register(require('./routes/conversation'), { prefix: '/api/v1/conversations' })
+  .register(require('./routes/message'), { prefix: '/api/v1/messages' });
 
 const startServer = async () => {
   try {

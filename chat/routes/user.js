@@ -1,7 +1,6 @@
-const { getAllUsers , addConversationToUser } = require('../controllers/user');
+const {  getUserConversations} = require('../controllers/conversation');
 
-module.exports = function (fastify, _, done) {
-    fastify.get('/', getAllUsers); // Get all users
-    fastify.post('/addConversation', addConversationToUser); // Add conversation to user
+exports.default = function (fastify, _, done) {
+  fastify.get('/:id/conversations', getUserConversations); // Get all conversations
   done();
 };

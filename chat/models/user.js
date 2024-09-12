@@ -1,4 +1,4 @@
-const { chatConnection, joinConnection } = require('../connectDbs');
+const {  joinConnection } = require('../connectDbs');
 const { Schema } = require('mongoose');
 
 // Define a schema for the join database
